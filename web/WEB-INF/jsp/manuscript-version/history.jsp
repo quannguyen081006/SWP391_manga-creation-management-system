@@ -157,14 +157,14 @@
                             <div class="detail-item">
                                 <div class="detail-label">Created</div>
                                 <div class="detail-value">
-                                    ${versionDates[version.id]}
+                                    ${createdDates[version.id]}
                                 </div>
                             </div>
                             <c:if test="${version.submittedAt != null}">
                                 <div class="detail-item">
                                     <div class="detail-label">Submitted</div>
                                     <div class="detail-value">
-                                        ${versionDates[version.id + '_submitted']}
+                                        ${submittedDates[version.id]}
                                     </div>
                                 </div>
                             </c:if>
@@ -172,7 +172,7 @@
                                 <div class="detail-item">
                                     <div class="detail-label">Approved</div>
                                     <div class="detail-value">
-                                        ${versionDates[version.id + '_approved']}
+                                        ${approvedDates[version.id]}
                                     </div>
                                 </div>
                             </c:if>
@@ -180,7 +180,7 @@
                                 <div class="detail-item">
                                     <div class="detail-label">Rejected</div>
                                     <div class="detail-value">
-                                        ${versionDates[version.id + '_rejected']}
+                                        ${rejectedDates[version.id]}
                                     </div>
                                 </div>
                             </c:if>

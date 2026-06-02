@@ -34,6 +34,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.Part;
 import static manga.common.util.SessionUserUtil.requireRole;
+import manga.enums.ManuscriptStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -819,6 +820,11 @@ public class ModuleWebController {
         boolean isAssignedTantou = user.getId() == tantouId;
         boolean isAdmin = user.hasRole("ADMIN");
 
+        // Readonly mode: approved, rejected, and published versions are readonly
+        boolean isReadonly = version.getStatus() == ManuscriptStatus.APPROVED
+        || version.getStatus() == ManuscriptStatus.REJECTED
+        || version.getStatus() == ManuscriptStatus.PUBLISHED;
+
         // Format LocalDateTime fields for JSP compatibility (Tomcat/JSTL doesn't support LocalDateTime with fmt:formatDate)
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         String createdAtFormatted = version.getCreatedAt() != null ? version.getCreatedAt().format(formatter) : "";
@@ -845,6 +851,7 @@ public class ModuleWebController {
         model.addAttribute("isMangakaOwner", isMangakaOwner);
         model.addAttribute("isAssignedTantou", isAssignedTantou);
         model.addAttribute("isAdmin", isAdmin);
+        model.addAttribute("isReadonly", isReadonly);
         model.addAttribute("productionLocked", manuscriptVersionService.isProductionLocked(version.getChapterId()));
 
         // Runtime logging for diagnostics
@@ -966,40 +973,18 @@ public class ModuleWebController {
 
     /**
      * View version history for chapter.
+     * Redirects to the most recent version's workspace since version history is now integrated into the workspace sidebar.
      */
     @RequestMapping(value = "/chapters/{chapterId}/manuscript-workspace/history", method = RequestMethod.GET)
     public String manuscriptWorkspaceHistory(@PathVariable("chapterId") long chapterId, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         List<manga.model.ManuscriptVersion> versions = manuscriptVersionService.listVersions(chapterId);
-        if (versions == null) {
-            versions = new java.util.ArrayList<>();
+        if (versions == null || versions.isEmpty()) {
+            throw new IllegalArgumentException("No manuscript versions found for chapter");
         }
-        ChapterSummary chapter = chapterRepository.findById(chapterId);
-
-        // Format LocalDateTime fields for JSP compatibility (Tomcat/JSTL doesn't support LocalDateTime with fmt:formatDate)
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        java.util.Map<String, String> versionDates = new java.util.HashMap<>();
-
-        for (manga.model.ManuscriptVersion v : versions) {
-            if (v.getCreatedAt() != null) {
-                versionDates.put(v.getId() + "_created", v.getCreatedAt().format(formatter));
-            }
-            if (v.getSubmittedAt() != null) {
-                versionDates.put(v.getId() + "_submitted", v.getSubmittedAt().format(formatter));
-            }
-            if (v.getApprovedAt() != null) {
-                versionDates.put(v.getId() + "_approved", v.getApprovedAt().format(formatter));
-            }
-            if (v.getRejectedAt() != null) {
-                versionDates.put(v.getId() + "_rejected", v.getRejectedAt().format(formatter));
-            }
-        }
-
-        model.addAttribute("versions", versions);
-        model.addAttribute("chapter", chapter);
-        model.addAttribute("versionDates", versionDates);
-        model.addAttribute("currentUser", user);
-        return "manuscript-version/history";
+        // Redirect to the most recent version's workspace
+        manga.model.ManuscriptVersion latestVersion = versions.get(0);
+        return "redirect:/main/manuscript-workspace/" + latestVersion.getId();
     }
 
     /**

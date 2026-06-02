@@ -14,9 +14,16 @@
             height: calc(100vh - 60px);
         }
         .workspace-sidebar {
-            width: 300px;
+            width: 280px;
             background: #f5f5f5;
             border-right: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .workspace-right-sidebar {
+            width: 320px;
+            background: #f5f5f5;
+            border-left: 1px solid #ddd;
             padding: 20px;
             overflow-y: auto;
         }
@@ -24,6 +31,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
         .workspace-toolbar {
             background: #fff;
@@ -173,73 +181,18 @@
     <jsp:include page="/WEB-INF/jsp/common/header.jsp"/>
     
     <div class="workspace-container">
-        <!-- Sidebar -->
+        <!-- Left Sidebar: Version List -->
         <div class="workspace-sidebar">
-            <div class="sidebar-section">
-                <div class="sidebar-title">Manuscript Info</div>
-                <div><strong>Version:</strong> ${version.version}</div>
-                <div><strong>Status:</strong> 
-                    <span class="status-badge status-${version.status}">${version.status}</span>
-                </div>
-                <div><strong>Pages:</strong> ${version.totalPageCount}</div>
-                <c:if test="${not empty createdAtFormatted}">
-                    <div><strong>Created:</strong> ${createdAtFormatted}</div>
-                </c:if>
-                <c:if test="${not empty submittedAtFormatted}">
-                    <div><strong>Submitted:</strong> ${submittedAtFormatted}</div>
-                </c:if>
-            </div>
-
-            <div class="sidebar-section">
-                <div class="sidebar-title">Review Dashboard</div>
-                <div class="dashboard-stat">
-                    <span class="stat-label">Total Pages</span>
-                    <span class="stat-value">${dashboard.totalPages}</span>
-                </div>
-                <div class="dashboard-stat">
-                    <span class="stat-label">Open Annotations</span>
-                    <span class="stat-value" style="color: ${dashboard.openAnnotations > 0 ? '#fa5252' : '#40c057'}">${dashboard.openAnnotations}</span>
-                </div>
-                <div class="dashboard-stat">
-                    <span class="stat-label">Resolved</span>
-                    <span class="stat-value">${dashboard.resolvedAnnotations}</span>
-                </div>
-                <div class="dashboard-stat">
-                    <span class="stat-label">Progress</span>
-                    <span class="stat-value">${dashboard.reviewProgress}%</span>
-                </div>
-            </div>
-
             <div class="sidebar-section">
                 <div class="sidebar-title">Version History</div>
                 <c:forEach var="v" items="${versionHistory}">
-                    <div class="version-item ${v.id == version.id ? 'current' : ''}">
+                    <a href="${pageContext.request.contextPath}/main/manuscript-workspace/${v.id}" class="version-item ${v.id == version.id ? 'current' : ''}" style="text-decoration: none; display: block;">
                         <div><strong>v${v.version}</strong> - ${v.status}</div>
                         <div style="font-size: 12px; color: #666;">
                             ${versionHistoryDates[v.id]}
                         </div>
-                    </div>
+                    </a>
                 </c:forEach>
-            </div>
-
-            <div class="sidebar-section">
-                <div class="sidebar-title">Recent Annotations</div>
-                <div class="annotation-list">
-                    <c:forEach var="annotation" items="${annotations}" end="4">
-                        <div class="annotation-item ${annotation.status == 'RESOLVED' ? 'resolved' : annotation.status == 'DISMISSED' ? 'dismissed' : ''}">
-                            <div style="font-weight: bold;">${annotation.category}</div>
-                            <div style="font-size: 13px;">${annotation.content}</div>
-                            <div style="font-size: 11px; color: #666; margin-top: 4px;">
-                                Page ${annotation.pageNumber} - ${annotation.status}
-                            </div>
-                        </div>
-                    </c:forEach>
-                    <c:if test="${fn:length(annotations) > 5}">
-                        <div style="text-align: center; color: #666; font-size: 12px;">
-                            +${fn:length(annotations) - 5} more annotations
-                        </div>
-                    </c:if>
-                </div>
             </div>
         </div>
 
@@ -248,40 +201,52 @@
             <div class="workspace-toolbar">
                 <div>
                     <strong>Chapter ${chapter.chapterNumber}: ${chapter.title}</strong>
+                    <span style="margin-left: 15px; color: #666; font-size: 13px;">
+                        v${version.version} - <span class="status-badge status-${version.status}">${version.status}</span>
+                    </span>
+                    <c:if test="${isReadonly}">
+                        <span style="margin-left: 15px; color: #868e96; font-size: 12px;">
+                            🔒 Readonly
+                        </span>
+                    </c:if>
                     <c:if test="${productionLocked}">
                         <span style="margin-left: 15px; color: #fa5252; font-size: 12px;">
                             🔒 Production Locked
                         </span>
                     </c:if>
                 </div>
+                <div style="font-size: 12px; color: #666;">
+                    Pages: ${version.totalPageCount} | 
+                    Open Annotations: <span style="color: ${dashboard.openAnnotations > 0 ? '#fa5252' : '#40c057'}">${dashboard.openAnnotations}</span> |
+                    Progress: ${dashboard.reviewProgress}%
+                </div>
                 <div>
-                    <c:if test="${version.status == 'DRAFT' && empty pages}">
+                    <c:if test="${!isReadonly && version.status == 'DRAFT' && empty pages}">
                         <form method="post" action="${pageContext.request.contextPath}/main/manuscript-workspace/${version.id}/import-pages" style="display: inline;">
                             <button type="submit" class="btn btn-primary">Import Pages</button>
                         </form>
                     </c:if>
-                    <c:if test="${version.status == 'DRAFT' && not empty pages}">
+                    <c:if test="${!isReadonly && version.status == 'DRAFT' && not empty pages}">
                         <form method="post" action="${pageContext.request.contextPath}/main/manuscript-workspace/${version.id}/submit" style="display: inline;">
                             <button type="submit" class="btn btn-primary">Submit for Review</button>
                         </form>
                     </c:if>
-                    <c:if test="${version.status == 'UNDER_REVIEW' && (isAssignedTantou || isAdmin)}">
+                    <c:if test="${!isReadonly && version.status == 'UNDER_REVIEW' && (isAssignedTantou || isAdmin)}">
                         <form method="post" action="${pageContext.request.contextPath}/main/manuscript-workspace/${version.id}/approve" style="display: inline;">
                             <button type="submit" class="btn btn-success" ${dashboard.openAnnotations > 0 ? 'disabled' : ''}>Approve</button>
                         </form>
                         <button type="button" class="btn btn-danger" onclick="showRejectModal()">Reject</button>
                     </c:if>
-                    <c:if test="${version.status == 'REJECTED' && isMangakaOwner}">
+                    <c:if test="${!isReadonly && version.status == 'REJECTED' && isMangakaOwner}">
                         <form method="post" action="${pageContext.request.contextPath}/main/chapters/${chapter.id}/manuscript-workspace/new-version" style="display: inline;">
                             <button type="submit" class="btn btn-primary">Create New Version</button>
                         </form>
                     </c:if>
-                    <c:if test="${version.status == 'APPROVED'}">
+                    <c:if test="${!isReadonly && version.status == 'APPROVED'}">
                         <form method="post" action="${pageContext.request.contextPath}/main/manuscript-workspace/${version.id}/publish" style="display: inline;">
                             <button type="submit" class="btn btn-success">Publish</button>
                         </form>
                     </c:if>
-                    <a href="${pageContext.request.contextPath}/main/chapters/${chapter.id}/manuscript-workspace/history" class="btn btn-secondary">Version History</a>
                     <a href="${pageContext.request.contextPath}/main/manuscript-workspace/${version.id}/dashboard" class="btn btn-secondary">Dashboard</a>
                     <a href="${pageContext.request.contextPath}/main/chapters/${chapter.id}" class="btn btn-secondary">Back to Chapter</a>
                 </div>
@@ -314,6 +279,29 @@
                 </c:forEach>
             </div>
         </div>
+
+        <!-- Right Sidebar: Annotation Panel -->
+        <div class="workspace-right-sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Annotations</div>
+                <div class="annotation-list">
+                    <c:if test="${empty annotations}">
+                        <div style="text-align: center; color: #999; font-size: 13px; padding: 20px;">
+                            No annotations
+                        </div>
+                    </c:if>
+                    <c:forEach var="annotation" items="${annotations}">
+                        <div class="annotation-item ${annotation.status == 'RESOLVED' ? 'resolved' : annotation.status == 'DISMISSED' ? 'dismissed' : ''}" style="cursor: pointer;" onclick="scrollToPage(${annotation.manuscriptPageId})">
+                            <div style="font-weight: bold;">${annotation.category}</div>
+                            <div style="font-size: 13px;">${annotation.content}</div>
+                            <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                                Page ${annotation.pageNumber} - ${annotation.status}
+                            </div>
+                        </div>
+                    </c:forEach>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Reject Modal -->
@@ -340,6 +328,13 @@
 
         function hideRejectModal() {
             document.getElementById('rejectModal').style.display = 'none';
+        }
+
+        function scrollToPage(pageId) {
+            var pageElement = document.getElementById('page-' + pageId);
+            if (pageElement) {
+                pageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         // Render annotation markers on pages
