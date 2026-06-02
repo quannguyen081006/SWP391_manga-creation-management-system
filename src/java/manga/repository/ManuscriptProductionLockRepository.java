@@ -109,13 +109,15 @@ public class ManuscriptProductionLockRepository {
     /**
      * Unlock production lock.
      * Deletes the lock row to allow new locks to be created for the same chapter.
+     * Returns true if at least one lock was deleted, false otherwise.
      */
-    public void unlock(Long chapterId) {
+    public boolean unlock(Long chapterId) {
         String sql = "DELETE FROM ManuscriptProductionLock WHERE chapterId = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, chapterId);
-            ps.executeUpdate();
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
         } catch (SQLException ex) {
             throw new RuntimeException("Cannot unlock production", ex);
         }
@@ -123,13 +125,15 @@ public class ManuscriptProductionLockRepository {
     
     /**
      * Delete lock by chapter ID.
+     * Returns true if at least one lock was deleted, false otherwise.
      */
-    public void deleteByChapterId(Long chapterId) {
+    public boolean deleteByChapterId(Long chapterId) {
         String sql = "DELETE FROM ManuscriptProductionLock WHERE chapterId = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, chapterId);
-            ps.executeUpdate();
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
         } catch (SQLException ex) {
             throw new RuntimeException("Cannot delete production lock", ex);
         }

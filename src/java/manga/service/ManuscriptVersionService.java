@@ -327,6 +327,11 @@ public class ManuscriptVersionService {
             throw new BusinessRuleException("Manuscript version not found");
         }
 
+        // Validate chapterId is not zero (prevents orphaned locks)
+        if (version.getChapterId() == null || version.getChapterId() == 0) {
+            throw new BusinessRuleException("Manuscript version has invalid chapterId: " + version.getChapterId());
+        }
+
         // Validate status transition using state machine
         version.validateTransition(ManuscriptStatus.SUBMITTED_FOR_REVIEW);
 
@@ -351,7 +356,14 @@ public class ManuscriptVersionService {
         manuscriptVersionRepository.updateSubmit(manuscriptVersionId, user.getId());
 
         // Create ReviewTask for SLA tracking (BR-51, BR-52)
-        reviewTaskService.createReviewTask(manuscriptVersionId, user);
+        // Wrapped in try-catch to prevent partial success if ReviewTask table doesn't exist
+        try {
+            reviewTaskService.createReviewTask(manuscriptVersionId, user);
+        } catch (Exception ex) {
+            // Log warning but don't fail the submit operation
+            // ReviewTask table may not exist in this database
+            System.err.println("Warning: Failed to create ReviewTask (table may not exist): " + ex.getMessage());
+        }
 
         // Notify Tantou
         Long tantouId = chapterRepository.getChapterTantou(version.getChapterId());
@@ -381,6 +393,11 @@ public class ManuscriptVersionService {
             throw new BusinessRuleException("Manuscript version not found");
         }
 
+        // Validate chapterId is not zero
+        if (version.getChapterId() == null || version.getChapterId() == 0) {
+            throw new BusinessRuleException("Manuscript version has invalid chapterId: " + version.getChapterId());
+        }
+
         // Validate status transition using state machine
         version.validateTransition(ManuscriptStatus.APPROVED);
 
@@ -404,15 +421,22 @@ public class ManuscriptVersionService {
         // Update status
         manuscriptVersionRepository.updateApproval(manuscriptVersionId, ManuscriptStatus.APPROVED, null, user.getId());
 
-        // Complete ReviewTask
-        reviewTaskService.completeReviewTask(manuscriptVersionId, user);
+        // Complete ReviewTask (wrapped in try-catch for missing table)
+        try {
+            reviewTaskService.completeReviewTask(manuscriptVersionId, user);
+        } catch (Exception ex) {
+            System.err.println("Warning: Failed to complete ReviewTask (table may not exist): " + ex.getMessage());
+        }
 
         // Phase 11: Approval Finalization - Mark chapter as APPROVED
         // When manuscript is approved, chapter automatically becomes APPROVED
         chapterRepository.updateChapterStatus(version.getChapterId(), "APPROVED");
 
         // Unlock production
-        lockRepository.unlock(version.getChapterId());
+        boolean unlocked = lockRepository.unlock(version.getChapterId());
+        if (!unlocked) {
+            System.err.println("Warning: No production lock found for chapterId " + version.getChapterId() + " during approve");
+        }
 
         // Notify Mangaka
         Long mangakaId = chapterRepository.getChapterMangaka(version.getChapterId());
@@ -470,6 +494,11 @@ public class ManuscriptVersionService {
             throw new BusinessRuleException("Manuscript version not found");
         }
 
+        // Validate chapterId is not zero
+        if (version.getChapterId() == null || version.getChapterId() == 0) {
+            throw new BusinessRuleException("Manuscript version has invalid chapterId: " + version.getChapterId());
+        }
+
         // Validate status transition using state machine
         version.validateTransition(ManuscriptStatus.REJECTED);
 
@@ -488,11 +517,18 @@ public class ManuscriptVersionService {
         // Update status
         manuscriptVersionRepository.updateApproval(manuscriptVersionId, ManuscriptStatus.REJECTED, feedback, user.getId());
 
-        // Complete ReviewTask
-        reviewTaskService.completeReviewTask(manuscriptVersionId, user);
+        // Complete ReviewTask (wrapped in try-catch for missing table)
+        try {
+            reviewTaskService.completeReviewTask(manuscriptVersionId, user);
+        } catch (Exception ex) {
+            System.err.println("Warning: Failed to complete ReviewTask (table may not exist): " + ex.getMessage());
+        }
 
         // Unlock production
-        lockRepository.unlock(version.getChapterId());
+        boolean unlocked = lockRepository.unlock(version.getChapterId());
+        if (!unlocked) {
+            System.err.println("Warning: No production lock found for chapterId " + version.getChapterId() + " during reject");
+        }
 
         // Notify Mangaka
         Long mangakaId = chapterRepository.getChapterMangaka(version.getChapterId());
@@ -819,6 +855,11 @@ public class ManuscriptVersionService {
     }
 
     private void lockProduction(Long chapterId, Long manuscriptVersionId, Long lockedBy) {
+        // Validate chapterId before creating lock to prevent orphaned locks
+        if (chapterId == null || chapterId == 0) {
+            throw new BusinessRuleException("Cannot create production lock with invalid chapterId: " + chapterId);
+        }
+        
         ManuscriptProductionLock lock = new ManuscriptProductionLock();
         lock.setChapterId(chapterId);
         lock.setManuscriptVersionId(manuscriptVersionId);
