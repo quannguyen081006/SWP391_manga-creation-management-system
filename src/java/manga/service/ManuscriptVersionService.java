@@ -101,6 +101,11 @@ public class ManuscriptVersionService {
      */
     @Transactional
     public ManuscriptVersion createWorkspace(Long chapterId, AuthenticatedUser user) {
+        // Validate chapterId before any database operations
+        if (chapterId == null || chapterId <= 0) {
+            throw new BusinessRuleException("Invalid chapterId: " + chapterId + ". Must be greater than 0.");
+        }
+
         // Validate chapter status (BR-1)
         String chapterStatus = chapterRepository.getChapterStatus(chapterId);
         if (!"EDITORIAL_REVIEW".equals(chapterStatus)) {
@@ -356,14 +361,7 @@ public class ManuscriptVersionService {
         manuscriptVersionRepository.updateSubmit(manuscriptVersionId, user.getId());
 
         // Create ReviewTask for SLA tracking (BR-51, BR-52)
-        // Wrapped in try-catch to prevent partial success if ReviewTask table doesn't exist
-        try {
-            reviewTaskService.createReviewTask(manuscriptVersionId, user);
-        } catch (Exception ex) {
-            // Log warning but don't fail the submit operation
-            // ReviewTask table may not exist in this database
-            System.err.println("Warning: Failed to create ReviewTask (table may not exist): " + ex.getMessage());
-        }
+        reviewTaskService.createReviewTask(manuscriptVersionId, user);
 
         // Notify Tantou
         Long tantouId = chapterRepository.getChapterTantou(version.getChapterId());
@@ -421,21 +419,17 @@ public class ManuscriptVersionService {
         // Update status
         manuscriptVersionRepository.updateApproval(manuscriptVersionId, ManuscriptStatus.APPROVED, null, user.getId());
 
-        // Complete ReviewTask (wrapped in try-catch for missing table)
-        try {
-            reviewTaskService.completeReviewTask(manuscriptVersionId, user);
-        } catch (Exception ex) {
-            System.err.println("Warning: Failed to complete ReviewTask (table may not exist): " + ex.getMessage());
-        }
+        // Complete ReviewTask
+        reviewTaskService.completeReviewTask(manuscriptVersionId, user);
 
         // Phase 11: Approval Finalization - Mark chapter as APPROVED
         // When manuscript is approved, chapter automatically becomes APPROVED
         chapterRepository.updateChapterStatus(version.getChapterId(), "APPROVED");
 
         // Unlock production
-        boolean unlocked = lockRepository.unlock(version.getChapterId());
+        boolean unlocked = lockRepository.unlock(version.getChapterId(), manuscriptVersionId);
         if (!unlocked) {
-            System.err.println("Warning: No production lock found for chapterId " + version.getChapterId() + " during approve");
+            System.err.println("Warning: No production lock found for chapterId " + version.getChapterId() + ", manuscriptVersionId " + manuscriptVersionId + " during approve");
         }
 
         // Notify Mangaka
@@ -517,17 +511,13 @@ public class ManuscriptVersionService {
         // Update status
         manuscriptVersionRepository.updateApproval(manuscriptVersionId, ManuscriptStatus.REJECTED, feedback, user.getId());
 
-        // Complete ReviewTask (wrapped in try-catch for missing table)
-        try {
-            reviewTaskService.completeReviewTask(manuscriptVersionId, user);
-        } catch (Exception ex) {
-            System.err.println("Warning: Failed to complete ReviewTask (table may not exist): " + ex.getMessage());
-        }
+        // Complete ReviewTask
+        reviewTaskService.completeReviewTask(manuscriptVersionId, user);
 
         // Unlock production
-        boolean unlocked = lockRepository.unlock(version.getChapterId());
+        boolean unlocked = lockRepository.unlock(version.getChapterId(), manuscriptVersionId);
         if (!unlocked) {
-            System.err.println("Warning: No production lock found for chapterId " + version.getChapterId() + " during reject");
+            System.err.println("Warning: No production lock found for chapterId " + version.getChapterId() + ", manuscriptVersionId " + manuscriptVersionId + " during reject");
         }
 
         // Notify Mangaka
@@ -548,6 +538,11 @@ public class ManuscriptVersionService {
      * BR-3: Previous REJECTED version remains immutable
      */
     public ManuscriptVersion createNewVersion(Long chapterId, AuthenticatedUser user) {
+        // Validate chapterId before any database operations
+        if (chapterId == null || chapterId <= 0) {
+            throw new BusinessRuleException("Invalid chapterId: " + chapterId + ". Must be greater than 0.");
+        }
+
         // Validate latest version is REJECTED
         List<ManuscriptVersion> versions = manuscriptVersionRepository.findByChapterIdOrderByVersionDesc(chapterId);
         if (versions.isEmpty()) {

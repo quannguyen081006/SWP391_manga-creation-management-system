@@ -110,8 +110,12 @@ public class ManuscriptProductionLockRepository {
      * Unlock production lock.
      * Deletes the lock row to allow new locks to be created for the same chapter.
      * Returns true if at least one lock was deleted, false otherwise.
+     * 
+     * @param chapterId the chapter ID to unlock
+     * @param manuscriptVersionId the manuscript version ID (for logging only)
+     * @return true if at least one lock was deleted, false otherwise
      */
-    public boolean unlock(Long chapterId) {
+    public boolean unlock(Long chapterId, Long manuscriptVersionId) {
         String sql = "DELETE FROM ManuscriptProductionLock WHERE chapterId = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
