@@ -300,11 +300,25 @@
             + '</span>';
     }
 
-    function renderStatusPill(id, label, count, cssClass, activeFilter) {
-        var active = activeFilter === id ? ' is-active' : '';
-        return '<button type="button" class="status-pill ' + cssClass + active + '" data-chapter-status-pill="' + id + '" aria-pressed="' + (activeFilter === id ? 'true' : 'false') + '">'
-            + '<span class="status-pill-label">' + escapeHtml(label) + '</span>'
-            + '<span class="status-pill-count">' + Number(count || 0) + '</span>'
+    function chapterFilterOptions(counts) {
+        return [
+            { id: 'ALL', label: 'All', count: counts.ALL, cssClass: 'pill-all' },
+            { id: 'OVERDUE', label: 'Overdue', count: counts.OVERDUE, cssClass: 'pill-overdue' },
+            { id: 'PLANNING', label: 'Planning', count: counts.PLANNING, cssClass: 'pill-planning' },
+            { id: 'IN_PROGRESS', label: 'In Progress', count: counts.IN_PROGRESS, cssClass: 'pill-progress' },
+            { id: 'COMPLETE', label: 'Complete', count: counts.COMPLETE, cssClass: 'pill-complete' },
+            { id: 'EDITORIAL_REVIEW', label: 'Editorial Review', count: counts.EDITORIAL_REVIEW, cssClass: 'pill-review' },
+            { id: 'APPROVED', label: 'Approved', count: counts.APPROVED, cssClass: 'pill-approved' },
+            { id: 'REJECTED', label: 'Rejected', count: counts.REJECTED, cssClass: 'pill-rejected' },
+            { id: 'AT_RISK', label: 'At Risk', count: counts.AT_RISK, cssClass: 'pill-at-risk' }
+        ];
+    }
+
+    function renderFilterOption(option, selectedId) {
+        var active = selectedId === option.id ? ' is-active' : '';
+        return '<button type="button" class="status-pill ' + option.cssClass + active + '" data-chapter-status-option="' + option.id + '">'
+            + '<span class="status-pill-label">' + escapeHtml(option.label) + '</span>'
+            + '<span class="status-pill-count">' + Number(option.count || 0) + '</span>'
             + '</button>';
     }
 
@@ -345,16 +359,24 @@
     function renderChapterStatusPills(counts) {
         var el = document.getElementById('chapterStatusPills');
         if (!el) { return; }
-        el.innerHTML = ''
-            + renderStatusPill('ALL', 'All', counts.ALL, 'pill-all', chapterStatusFilter)
-            + renderStatusPill('OVERDUE', 'Overdue', counts.OVERDUE, 'pill-overdue', chapterStatusFilter)
-            + renderStatusPill('PLANNING', 'Planning', counts.PLANNING, 'pill-planning', chapterStatusFilter)
-            + renderStatusPill('IN_PROGRESS', 'In Progress', counts.IN_PROGRESS, 'pill-progress', chapterStatusFilter)
-            + renderStatusPill('COMPLETE', 'Complete', counts.COMPLETE, 'pill-complete', chapterStatusFilter)
-            + renderStatusPill('EDITORIAL_REVIEW', 'Editorial Review', counts.EDITORIAL_REVIEW, 'pill-review', chapterStatusFilter)
-            + renderStatusPill('APPROVED', 'Approved', counts.APPROVED, 'pill-approved', chapterStatusFilter)
-            + renderStatusPill('REJECTED', 'Rejected', counts.REJECTED, 'pill-rejected', chapterStatusFilter)
-            + renderStatusPill('AT_RISK', 'At Risk', counts.AT_RISK, 'pill-at-risk', chapterStatusFilter);
+        var options = chapterFilterOptions(counts);
+        var selected = options[0];
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].id === chapterStatusFilter) {
+                selected = options[i];
+                break;
+            }
+        }
+        el.innerHTML = '<div class="status-filter-dropdown" data-status-filter-dropdown="chapter">'
+            + '<button type="button" class="status-pill status-filter-toggle ' + selected.cssClass + ' is-active" data-status-filter-toggle="chapter" aria-haspopup="true" aria-expanded="false">'
+            + '<span class="status-pill-label">' + escapeHtml(selected.label) + '</span>'
+            + '<span class="status-pill-count">' + Number(selected.count || 0) + '</span>'
+            + '<span class="status-filter-caret">&#9662;</span>'
+            + '</button>'
+            + '<div class="status-filter-menu">'
+            + options.map(function (option) { return renderFilterOption(option, chapterStatusFilter); }).join('')
+            + '</div>'
+            + '</div>';
     }
 
     function trackerColspan() {
@@ -686,10 +708,26 @@
             return;
         }
 
-        var chapterPill = e.target.closest ? e.target.closest('#chapterStatusPills [data-chapter-status-pill]') : null;
+        var chapterToggle = e.target.closest ? e.target.closest('#chapterStatusPills [data-status-filter-toggle]') : null;
+        if (chapterToggle) {
+            var chapterDropdown = chapterToggle.closest('[data-status-filter-dropdown]');
+            if (chapterDropdown) {
+                chapterDropdown.classList.toggle('open');
+                chapterToggle.setAttribute('aria-expanded', chapterDropdown.classList.contains('open') ? 'true' : 'false');
+            }
+            return;
+        }
+
+        var chapterPill = e.target.closest ? e.target.closest('#chapterStatusPills [data-chapter-status-option]') : null;
         if (chapterPill) {
-            chapterStatusFilter = chapterPill.getAttribute('data-chapter-status-pill') || 'ALL';
+            chapterStatusFilter = chapterPill.getAttribute('data-chapter-status-option') || 'ALL';
             renderChapters();
+            return;
+        }
+
+        var openChapterDropdown = document.querySelector('#chapterStatusPills [data-status-filter-dropdown].open');
+        if (openChapterDropdown && !(e.target.closest && e.target.closest('#chapterStatusPills [data-status-filter-dropdown]'))) {
+            openChapterDropdown.classList.remove('open');
         }
     });
 

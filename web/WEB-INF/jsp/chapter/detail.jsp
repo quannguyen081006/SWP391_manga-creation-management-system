@@ -32,13 +32,12 @@
         .page-slot {
             position: relative; aspect-ratio: 3/4; border-radius: 10px; cursor: pointer;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            overflow: hidden; transition: box-shadow 0.15s, border-color 0.15s;
+            overflow: hidden; box-sizing: border-box; transition: box-shadow 0.15s, border-color 0.15s;
         }
         .page-slot-num { position: absolute; top: 6px; left: 8px; font-size: 11px; font-weight: 700; color: #374151; z-index: 2; }
-        .page-slot.state-empty { border: 2px dashed #d1d5db; background: #f9fafb; color: #9ca3af; }
+        .page-slot.state-empty { border: 3px dashed #d1d5db; background: #f9fafb; color: #9ca3af; }
         .page-slot.state-empty:hover { border-color: #9ca3af; background: #f3f4f6; }
-        .page-slot.state-uploaded { border: 2px solid #3b82f6; background: #eff6ff; }
-        .page-slot.state-task { border: 2px solid #14b8a6; background: #f0fdfa; }
+        .page-slot.state-uploaded { border: 3px solid #3b82f6; background: #eff6ff; }
         .page-slot.state-selected { box-shadow: 0 0 0 3px #8b5cf6; border-color: #7c3aed !important; }
         .page-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .page-slot-initials {
@@ -88,14 +87,11 @@
             width: 24px; height: 24px; border-radius: 7px; background: #f9fafb; box-sizing: border-box;
             box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
         }
-        .legend-empty { border: 2px dashed #d1d5db; }
-        .legend-uploaded { border: 2px solid #3b82f6; background: #eff6ff; }
-        .legend-task { border: 2px solid #14b8a6; background: #f0fdfa; }
-        .legend-selected { border: 2px solid #7c3aed; background: #f5f3ff; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22); }
-        .legend-progress { border: 2px solid #e11d48; background: #fff1f2; }
-        .legend-submitted { border: 2px solid #f59e0b; background: #fffbeb; }
+        .legend-empty { border: 3px dashed #d1d5db; }
+        .legend-uploaded { border: 3px solid #3b82f6; background: #eff6ff; }
+        .legend-selected { border: 3px solid #7c3aed; background: #f5f3ff; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22); }
         .legend-complete {
-            border: 2px solid transparent;
+            border: 3px solid transparent;
             background:
                 linear-gradient(#fff, #fff) padding-box,
                 conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #6366f1, #ec4899, #ef4444) border-box;
@@ -137,11 +133,10 @@
         .task-decision-label.approved { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; }
         .task-decision-label.rejected { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; }
         #chapterTaskTableWrap { overflow: visible; }
-        .page-slot.task-in-progress { border-color: #e11d48 !important; }
-        .page-slot.task-submitted { border-color: #f59e0b !important; }
-        .page-slot.task-approved { border-color: #3b82f6 !important; }
+        .page-slot.task-in-progress { border: 3px solid #e11d48 !important; }
+        .page-slot.task-submitted { border: 3px solid #f59e0b !important; }
         .page-slot.stage-complete {
-            border: 2px solid transparent !important;
+            border: 3px solid transparent !important;
             background:
                 linear-gradient(#fff, #fff) padding-box,
                 conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #6366f1, #ec4899, #ef4444) border-box;
@@ -162,6 +157,8 @@
             padding: 3px 7px; border-radius: 5px; white-space: nowrap; z-index: 20;
         }
         .page-slot-status-icon:hover .icon-tooltip { display: block; }
+        .legend-progress { border: 3px solid #e11d48; background: #fff1f2; }
+        .legend-submitted { border: 3px solid #f59e0b; background: #fffbeb; }
         .page-slot-lock {
             position: absolute; top: 4px; left: 20px;
             font-size: 10px; z-index: 4; line-height: 1;
@@ -249,7 +246,7 @@
             </div>
             <div id="progressSection">
                 <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-                    <span style="color:#6b7280;">Tiến độ task trên trang</span>
+                    <span style="color:#6b7280;">Tiến độ page</span>
                     <span id="progressLabel" style="font-weight:500;"></span>
                 </div>
                 <div class="progress"><span id="progressFill" style="width:0%;background:#8b5cf6;"></span></div>
@@ -332,7 +329,7 @@
                     <div id="metaStatus" style="margin-top:4px;"></div>
                 </div>
                 <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px;">
-                    <div style="font-size:11px;color:#9ca3af;margin-bottom:3px;">Task progress</div>
+                    <div style="font-size:11px;color:#9ca3af;margin-bottom:3px;">Page progress</div>
                     <div id="metaProgress" style="font-size:14px;font-weight:600;"></div>
                 </div>
             </div>
@@ -347,10 +344,6 @@
                 <div class="legend-row">
                     <span class="legend-swatch legend-uploaded"></span>
                     <span><strong>Đã upload</strong>Có ảnh, chưa gán task.</span>
-                </div>
-                <div class="legend-row">
-                    <span class="legend-swatch legend-task"></span>
-                    <span><strong>Đã gán task</strong>Trang đang thuộc một task.</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-swatch legend-selected"></span>
@@ -854,16 +847,29 @@
         return n;
     }
 
-    function countWithTask() {
+    function pageStageScore(slot) {
+        var stage = normalizeStage(slot && slot.completedStage);
+        return stage ? pageStageOrder.indexOf(stage) + 1 : 0;
+    }
+
+    function pageCompletionPercent() {
+        if (!pageSlots.length) { return 0; }
+        var completedUnits = 0;
+        for (var i = 0; i < pageSlots.length; i++) {
+            completedUnits += pageStageScore(pageSlots[i]);
+        }
+        return Math.round((completedUnits * 100) / (pageSlots.length * pageStageOrder.length));
+    }
+
+    function countFullyCompletePages() {
         var n = 0;
         for (var i = 0; i < pageSlots.length; i++) {
-            if (pageSlots[i].taskId) { n++; }
+            if (isPageFullyComplete(pageSlots[i])) { n++; }
         }
         return n;
     }
 
     function slotStateClass(slot) {
-        if (slot.taskId) { return 'state-task'; }
         if (String(slot.status || '').toUpperCase() === 'UPLOADED' || slot.imageUrl) { return 'state-uploaded'; }
         return 'state-empty';
     }
@@ -962,23 +968,16 @@
             }
             var selected = selectable && !!selectedPageIds[String(slot.id)];
             var state = slotStateClass(slot);
-            var taskStatusCls = '';
-            var statusIconHtml = '';
-            if (slot.taskId) {
-                var ts = String(slot.taskStatus || '').toUpperCase();
-                if (ts === 'IN_PROGRESS') {
-                    taskStatusCls = ' task-in-progress';
-                    statusIconHtml = '<span class="page-slot-status-icon icon-in-progress">●<span class="icon-tooltip">Đang làm</span></span>';
-                } else if (ts === 'SUBMITTED') {
-                    taskStatusCls = ' task-submitted';
-                    statusIconHtml = '<span class="page-slot-status-icon icon-submitted">●<span class="icon-tooltip">Đã nộp</span></span>';
-                } else if (ts === 'APPROVED') {
-                    taskStatusCls = ' task-approved';
-                    statusIconHtml = '<span class="page-slot-status-icon icon-approved">●<span class="icon-tooltip">Đã duyệt</span></span>';
-                }
-            }
+            var inProgressTaskCls = String(slot.taskStatus || '').toUpperCase() === 'IN_PROGRESS' ? ' task-in-progress' : '';
+            var inProgressTaskIcon = inProgressTaskCls
+                ? '<span class="page-slot-status-icon icon-in-progress">●<span class="icon-tooltip">Đang làm</span></span>'
+                : '';
+            var submittedTaskCls = String(slot.taskStatus || '').toUpperCase() === 'SUBMITTED' ? ' task-submitted' : '';
+            var submittedTaskIcon = submittedTaskCls
+                ? '<span class="page-slot-status-icon icon-submitted">●<span class="icon-tooltip">Đã nộp</span></span>'
+                : '';
             var completeStageCls = normalizeStage(slot.completedStage) === 'LETTERING' ? ' stage-complete' : '';
-            var cls = 'page-slot ' + state + taskStatusCls + completeStageCls + (selected ? ' state-selected' : '');
+            var cls = 'page-slot ' + state + inProgressTaskCls + submittedTaskCls + completeStageCls + (selected ? ' state-selected' : '');
             var num = '<span class="page-slot-num">' + slot.pageNumber + '</span>';
             var lockIconHtml = slot.taskId ? '<span class="page-slot-lock" title="Trang này đã được gán task">🔒</span>' : '';
             var inner = '';
@@ -992,7 +991,7 @@
                 inner += '<span class="page-slot-initials" title="' + escapeHtml(slot.assistantName) + '">' + escapeHtml(initials(slot.assistantName)) + '</span>';
             }
             inner += renderStageTrack(slot.completedStage);
-            return '<div class="' + cls + '" data-page-id="' + slot.id + '" data-slot-index="' + index + '" data-page-number="' + slot.pageNumber + '">' + num + lockIconHtml + statusIconHtml + inner + '</div>';
+            return '<div class="' + cls + '" data-page-id="' + slot.id + '" data-slot-index="' + index + '" data-page-number="' + slot.pageNumber + '">' + num + lockIconHtml + inProgressTaskIcon + submittedTaskIcon + inner + '</div>';
         }).join('');
 
         if (owner) {
@@ -1004,15 +1003,15 @@
 
     function renderPageProgress() {
         var total = pageSlots.length;
-        var withTask = countWithTask();
         var uploaded = countUploaded();
-        var pct = total > 0 ? Math.round((withTask / total) * 100) : 0;
-        document.getElementById('progressLabel').textContent = withTask + ' / ' + total + ' pages có task';
+        var completePages = countFullyCompletePages();
+        var pct = pageCompletionPercent();
+        document.getElementById('progressLabel').textContent = pct + '% (' + completePages + ' / ' + total + ' pages complete)';
         document.getElementById('progressFill').style.width = pct + '%';
         document.getElementById('pageCountLabel').textContent = uploaded + ' / ' + total + ' đã upload';
         document.getElementById('tabPageCount').textContent = total;
         document.getElementById('metaPages').textContent = uploaded + ' / ' + total;
-        document.getElementById('metaProgress').textContent = withTask + ' / ' + total + ' có task';
+        document.getElementById('metaProgress').textContent = pct + '% page';
     }
 
     function renderSidebarTasks() {

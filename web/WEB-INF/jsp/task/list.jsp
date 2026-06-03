@@ -370,11 +370,25 @@
         return task && (task.delayed === true || task.isDelayed === true);
     }
 
-    function renderStatusPill(id, label, count, cssClass, activeFilter) {
-        var active = activeFilter === id ? ' is-active' : '';
-        return '<button type="button" class="status-pill ' + cssClass + active + '" data-status-pill="' + id + '" aria-pressed="' + (activeFilter === id ? 'true' : 'false') + '">'
-            + '<span class="status-pill-label">' + escapeHtml(label) + '</span>'
-            + '<span class="status-pill-count">' + Number(count || 0) + '</span>'
+    function taskFilterOptions(counts) {
+        return [
+            { id: 'ALL', label: 'All', count: counts.ALL, cssClass: 'pill-all' },
+            { id: 'IN_PROGRESS', label: 'In Progress', count: counts.IN_PROGRESS, cssClass: 'pill-progress' },
+            { id: 'SUBMITTED', label: 'Submitted', count: counts.SUBMITTED, cssClass: 'pill-submitted' },
+            { id: 'APPROVED', label: 'Completed', count: counts.APPROVED, cssClass: 'pill-approved' },
+            { id: 'REJECTED', label: 'Rejected', count: counts.REJECTED, cssClass: 'pill-rejected' },
+            { id: 'DELETED', label: 'Deleted', count: counts.DELETED, cssClass: 'pill-rejected' },
+            { id: 'REASSIGNED', label: 'Reassigned', count: counts.REASSIGNED, cssClass: 'pill-pending' },
+            { id: 'DELAYED', label: 'Delayed', count: counts.DELAYED, cssClass: 'pill-delayed' },
+            { id: 'OVERDUE', label: 'Overdue', count: counts.OVERDUE, cssClass: 'pill-overdue' }
+        ];
+    }
+
+    function renderTaskFilterOption(option, selectedId) {
+        var active = selectedId === option.id ? ' is-active' : '';
+        return '<button type="button" class="status-pill ' + option.cssClass + active + '" data-status-option="' + option.id + '">'
+            + '<span class="status-pill-label">' + escapeHtml(option.label) + '</span>'
+            + '<span class="status-pill-count">' + Number(option.count || 0) + '</span>'
             + '</button>';
     }
 
@@ -420,16 +434,24 @@
         var el = document.getElementById('taskStatusPills');
         if (!el) { return; }
 
-        el.innerHTML = ''
-            + renderStatusPill('ALL', 'All', counts.ALL, 'pill-all', taskStatusFilter)
-            + renderStatusPill('IN_PROGRESS', 'In Progress', counts.IN_PROGRESS, 'pill-progress', taskStatusFilter)
-            + renderStatusPill('SUBMITTED', 'Submitted', counts.SUBMITTED, 'pill-submitted', taskStatusFilter)
-            + renderStatusPill('APPROVED', 'Completed', counts.APPROVED, 'pill-approved', taskStatusFilter)
-            + renderStatusPill('REJECTED', 'Rejected', counts.REJECTED, 'pill-rejected', taskStatusFilter)
-            + renderStatusPill('DELETED', 'Deleted', counts.DELETED, 'pill-rejected', taskStatusFilter)
-            + renderStatusPill('REASSIGNED', 'Reassigned', counts.REASSIGNED, 'pill-pending', taskStatusFilter)
-            + renderStatusPill('DELAYED', 'Delayed', counts.DELAYED, 'pill-delayed', taskStatusFilter)
-            + renderStatusPill('OVERDUE', 'Overdue', counts.OVERDUE, 'pill-overdue', taskStatusFilter);
+        var options = taskFilterOptions(counts);
+        var selected = options[0];
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].id === taskStatusFilter) {
+                selected = options[i];
+                break;
+            }
+        }
+        el.innerHTML = '<div class="status-filter-dropdown align-right" data-status-filter-dropdown="task">'
+            + '<button type="button" class="status-pill status-filter-toggle ' + selected.cssClass + ' is-active" data-status-filter-toggle="task" aria-haspopup="true" aria-expanded="false">'
+            + '<span class="status-pill-label">' + escapeHtml(selected.label) + '</span>'
+            + '<span class="status-pill-count">' + Number(selected.count || 0) + '</span>'
+            + '<span class="status-filter-caret">&#9662;</span>'
+            + '</button>'
+            + '<div class="status-filter-menu">'
+            + options.map(function (option) { return renderTaskFilterOption(option, taskStatusFilter); }).join('')
+            + '</div>'
+            + '</div>';
     }
 
     function renderStatusCell(task) {
@@ -998,12 +1020,27 @@
     }
 
     document.addEventListener('click', async function (e) {
-        var taskPill = e.target.closest ? e.target.closest('#taskStatusPills [data-status-pill]') : null;
+        var taskToggle = e.target.closest ? e.target.closest('#taskStatusPills [data-status-filter-toggle]') : null;
+        if (taskToggle) {
+            var taskDropdown = taskToggle.closest('[data-status-filter-dropdown]');
+            if (taskDropdown) {
+                taskDropdown.classList.toggle('open');
+                taskToggle.setAttribute('aria-expanded', taskDropdown.classList.contains('open') ? 'true' : 'false');
+            }
+            return;
+        }
+
+        var taskPill = e.target.closest ? e.target.closest('#taskStatusPills [data-status-option]') : null;
         if (taskPill) {
-            taskStatusFilter = taskPill.getAttribute('data-status-pill') || 'ALL';
+            taskStatusFilter = taskPill.getAttribute('data-status-option') || 'ALL';
             renderStatusPills(computeTaskCounts());
             renderTasks();
             return;
+        }
+
+        var openTaskDropdown = document.querySelector('#taskStatusPills [data-status-filter-dropdown].open');
+        if (openTaskDropdown && !(e.target.closest && e.target.closest('#taskStatusPills [data-status-filter-dropdown]'))) {
+            openTaskDropdown.classList.remove('open');
         }
 
         var approvePopBtn = e.target.closest ? e.target.closest('[data-task-approve-pop]') : null;

@@ -22,7 +22,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class PageTaskRepository {
 
-    private static final int TASK_REJECT_SERIES_DEADLINE_BUFFER_DAYS = 7;
+    private static final int TASK_REJECT_SERIES_DEADLINE_BUFFER_DAYS = 3;
 
     private static final String SQL_IS_DELAYED =
             "CAST(CASE WHEN t.status IN ('PENDING','IN_PROGRESS','REJECTED') "
