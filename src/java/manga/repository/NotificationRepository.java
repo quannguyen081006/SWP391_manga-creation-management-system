@@ -11,16 +11,25 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Repository thao tac bang Notification va map du lieu sang NotificationItem.
+ */
 @Repository
 public class NotificationRepository {
 
     @Autowired
     private DataSource dataSource;
 
+    /**
+     * Tao notification voi title va viewUrl mac dinh theo loai tham chieu.
+     */
     public void create(long userId, String type, String message, long referenceId, String referenceType) {
         create(userId, type, defaultTitle(type), message, defaultViewUrl(type, referenceId, referenceType), referenceId, referenceType);
     }
 
+    /**
+     * Tao notification voi day du title, message va viewUrl da tinh san.
+     */
     public void create(long userId, String type, String title, String message, String viewUrl, long referenceId, String referenceType) {
         String sql = "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, 0, GETDATE())";
         try (Connection conn = dataSource.getConnection();
@@ -42,10 +51,16 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Lay danh sach notification mac dinh cua user.
+     */
     public List<NotificationItem> listByUser(long userId) {
         return listByUser(userId, 100);
     }
 
+    /**
+     * Lay notification cua user voi gioi han so dong.
+     */
     public List<NotificationItem> listByUser(long userId, int limit) {
         String sql = "SELECT TOP (?) id, userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt FROM Notification WHERE userId = ? ORDER BY createdAt DESC";
         List<NotificationItem> rows = new ArrayList<NotificationItem>();
@@ -64,6 +79,9 @@ public class NotificationRepository {
         return rows;
     }
 
+    /**
+     * Dem so notification chua doc cua user.
+     */
     public int unreadCount(long userId) {
         String sql = "SELECT COUNT(*) FROM Notification WHERE userId = ? AND isRead = 0";
         try (Connection conn = dataSource.getConnection();
@@ -77,11 +95,17 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Danh dau notification cua user la da doc.
+     */
     public void markRead(long userId, long id) {
         String sql = "UPDATE Notification SET isRead = 1 WHERE id = ? AND userId = ?";
         update(sql, id, userId);
     }
 
+    /**
+     * Danh dau toan bo notification cua user la da doc.
+     */
     public void markAllRead(long userId) {
         String sql = "UPDATE Notification SET isRead = 1 WHERE userId = ? AND isRead = 0";
         try (Connection conn = dataSource.getConnection();
@@ -93,6 +117,9 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Lay viewUrl cho notification cua user, co sua fallback cho URL cu.
+     */
     public String viewUrlByUser(long userId, long id) {
         String sql = "SELECT type, viewUrl, referenceId FROM Notification WHERE id = ? AND userId = ?";
         try (Connection conn = dataSource.getConnection();
@@ -201,6 +228,3 @@ public class NotificationRepository {
         return null;
     }
 }
-
-
-

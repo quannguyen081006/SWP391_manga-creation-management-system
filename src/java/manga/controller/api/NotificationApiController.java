@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller cung cap API notification cho client-side actions.
+ * Route: /api/v1/notifications.
+ */
 @RestController
 @RequestMapping("/api/v1/notifications")
 public class NotificationApiController {
@@ -19,12 +23,18 @@ public class NotificationApiController {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    /**
+     * Tra ve danh sach notification cua user hien tai.
+     */
     @RequestMapping(method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
     public String list(HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         return ok(notificationRepository.listByUser(user.getId()), "Notifications");
     }
 
+    /**
+     * Danh dau mot notification la da doc qua API.
+     */
     @RequestMapping(value = "/{id}/read", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
     public String markRead(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
@@ -32,6 +42,9 @@ public class NotificationApiController {
         return okEmpty("Notification marked as read");
     }
 
+    /**
+     * Danh dau tat ca notification cua user hien tai la da doc qua API.
+     */
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
     public String markAllRead(HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
@@ -122,8 +135,4 @@ public class NotificationApiController {
         return builder.toString();
     }
 }
-
-
-
-
 

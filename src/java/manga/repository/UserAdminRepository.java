@@ -1,7 +1,6 @@
 package manga.repository;
 
 import manga.common.util.RoleCombinationValidator;
-import manga.model.AuthenticatedUser;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,12 +13,18 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Repository phuc vu admin quan ly user, status va role.
+ */
 @Repository
 public class UserAdminRepository {
 
     @Autowired
     private DataSource dataSource;
 
+    /**
+     * Lay danh sach user kem role de hien thi trang quan tri.
+     */
     public List<Map<String, Object>> listUsers() {
         String sql = "SELECT id, username, fullName, email, status, createdAt, updatedAt FROM [User] ORDER BY id";
         List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
@@ -37,6 +42,9 @@ public class UserAdminRepository {
         return rows;
     }
 
+    /**
+     * Lay user active kem nhan role phuc vu switch role khi test.
+     */
     public List<Map<String, Object>> listActiveUsersForSwitch() {
         String sql = "SELECT id, username, fullName, email, status, createdAt, updatedAt FROM [User] WHERE status = 'ACTIVE' ORDER BY id";
         List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
@@ -97,6 +105,9 @@ public class UserAdminRepository {
         return role;
     }
 
+    /**
+     * Lay chi tiet user va role theo id.
+     */
     public Map<String, Object> getUser(long id) {
         String sql = "SELECT id, username, fullName, email, status, createdAt, updatedAt FROM [User] WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
@@ -115,6 +126,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Tao user active moi sau khi validate thong tin co ban.
+     */
     public long createUser(String username, String passwordHash, String fullName, String email) {
         validateUserFields(username, passwordHash, fullName, email);
         String sql = "INSERT INTO [User] (username, passwordHash, fullName, email, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, 'ACTIVE', GETDATE(), GETDATE())";
@@ -145,6 +159,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Cap nhat ho ten va email cua user.
+     */
     public void updateUser(long id, String fullName, String email) {
         if (isBlank(fullName) || isBlank(email) || !email.contains("@")) {
             throw new IllegalArgumentException("Full name and valid email are required");
@@ -168,6 +185,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Cap nhat trang thai ACTIVE/INACTIVE cua user.
+     */
     public void updateStatus(long id, String status) {
         String normalized = normalizeStatus(status);
         String sql = "UPDATE [User] SET status = ?, updatedAt = GETDATE() WHERE id = ?";
@@ -188,6 +208,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Gan role cho user neu role chua ton tai va to hop role hop le.
+     */
     public void addRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         String roleSql = "SELECT id FROM [Role] WHERE name = ?";
@@ -226,6 +249,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Go role khoi user, bao ve admin cuoi cung.
+     */
     public void removeRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         String sql = "DELETE ur FROM UserRole ur JOIN [Role] r ON ur.roleId = r.id WHERE ur.userId = ? AND r.name = ?";
@@ -244,6 +270,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Lay danh sach role hien co cua user.
+     */
     public List<String> listRoles(long userId) {
         try (Connection conn = dataSource.getConnection()) {
             return listRoles(conn, userId);
@@ -252,6 +281,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Lay thong tin role hien tai cua user kem nhan hien thi.
+     */
     public List<Map<String, Object>> listRoleSwitchItems(long userId) {
         String sql =
             "WITH RankedRoles AS ("
@@ -283,10 +315,16 @@ public class UserAdminRepository {
         return rows;
     }
 
+    /**
+     * Kiem tra he thong da co admin nao chua.
+     */
     public boolean hasAnyAdmin() {
         return countUsersWithRole("ADMIN") > 0;
     }
 
+    /**
+     * Kiem tra user co role duoc chi dinh hay khong.
+     */
     public boolean hasRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         try (Connection conn = dataSource.getConnection()) {
@@ -296,6 +334,9 @@ public class UserAdminRepository {
         }
     }
 
+    /**
+     * Dem so user dang giu role duoc chi dinh.
+     */
     public int countUsersWithRole(String roleName) {
         String normalizedRole = normalizeRole(roleName);
         try (Connection conn = dataSource.getConnection()) {
@@ -459,6 +500,4 @@ public class UserAdminRepository {
         }
     }
 }
-
-
 

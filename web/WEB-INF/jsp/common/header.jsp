@@ -10,6 +10,7 @@
     <c:set var="backUri" value="/main/dashboard" />
 </c:if>
 
+<%-- Current user context: derive display role, role flags, and avatar text. --%>
 <c:set var="displayRole" value="User" />
 <c:set var="roleKey" value="user" />
 <c:set var="currentUsername" value="${empty sessionScope.AUTH_USER.username ? '' : sessionScope.AUTH_USER.username}" />
@@ -59,12 +60,13 @@
     </c:otherwise>
 </c:choose>
 
+<%-- App shell sidebar: role-based navigation for authenticated users. --%>
 <div class="app-shell">
     <aside class="side-nav">
         <a class="side-brand" href="${ctx}/main/dashboard" title="Back to Dashboard">
             <div class="brand-icon">MF</div>
             <div>
-                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v1.1</span></div>
+                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v1.2</span></div>
                 <div class="brand-sub">Manga Studio Ops</div>
             </div>
         </a>
@@ -125,6 +127,7 @@
 
     <section class="main-shell">
         <header class="top-shell">
+            <%-- Top header: dashboard title, active role pills, notifications, and account actions. --%>
             <div class="page-head">
                 <h1>Dashboard</h1>
                 <c:if test="${sessionScope.AUTH_USER != null && sessionScope.AUTH_USER.hasRole('ADMIN')}">
@@ -144,6 +147,7 @@
                 </c:if>
             </div>
             <div class="top-user">
+                <%-- Notification dropdown: click item to mark read and redirect through web controller. --%>
                 <details class="notify-switcher">
                     <summary class="notify-toggle" title="Notifications">
     <svg class="notify-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -188,7 +192,7 @@
                 <div class="avatar role-${roleKey}" title="${displayName}">${avatarText}</div>
                 <div>
                     <div class="user-name"><c:out value="${displayName}" default="Yuki Tanaka"/></div>
-                    <!-- DEV_SWITCH_ROLE_START: remove this block when feature is no longer needed -->
+                    <%-- Role switcher: quick test helper that loads active users from the auth API. --%>
                     <div class="user-actions">
                         <details class="role-switcher" id="roleSwitcherDropdown">
                             <summary class="user-sub switch-toggle">Switch role</summary>
@@ -251,11 +255,11 @@
                         </script>
                         <a class="logout-link" href="${ctx}/main/logout">Logout</a>
                     </div>
-                    <!-- DEV_SWITCH_ROLE_END -->
                 </div>
             </div>
         </header>
         <main class="page-wrap">
+            <%-- Sidebar state script: persists collapsed/expanded preference. --%>
             <script>
                 (function () {
                     var shell = document.querySelector('.app-shell');
@@ -290,6 +294,7 @@
                     }
                 }());
             </script>
+            <%-- Notification timestamp script: converts database timestamps to relative time. --%>
             <script>
                 function timeAgo(dateStr) {
                     if (!dateStr) {
@@ -322,10 +327,3 @@
                     renderNotificationTimes();
                 }
             </script>
-
-
-
-
-
-
-

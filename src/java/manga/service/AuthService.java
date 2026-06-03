@@ -11,6 +11,9 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service xac thuc user va ho tro khoi tao tai khoan test.
+ */
 @Service
 public class AuthService {
 
@@ -23,6 +26,9 @@ public class AuthService {
     @Autowired
     private DataSource dataSource;
 
+    /**
+     * Dang nhap bang username/password va tra ve user da xac thuc.
+     */
     public AuthenticatedUser login(String username, String password) {
         if (username != null) {
             ensureTestingAccountExists(username.trim());
@@ -44,7 +50,9 @@ public class AuthService {
         return user;
     }
 
-    // DEV_SWITCH_ROLE: temporary quick switch helper for testing accounts.
+    /**
+     * Lay user active theo username de phuc vu switch role khi test.
+     */
     public AuthenticatedUser switchUserForTesting(String username) {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username is required for switch role");

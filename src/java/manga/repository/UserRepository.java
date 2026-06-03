@@ -13,12 +13,18 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Repository doc thong tin user dang nhap va danh sach user theo role.
+ */
 @Repository
 public class UserRepository {
 
     @Autowired
     private DataSource dataSource;
 
+    /**
+     * Tim user dang nhap theo username va nap danh sach role.
+     */
     public AuthenticatedUser findByUsername(String username) {
         String sql = "SELECT id, username, passwordHash, fullName, status FROM [User] WHERE username = ?";
         try (Connection conn = dataSource.getConnection();
@@ -54,6 +60,9 @@ public class UserRepository {
         }
     }
 
+    /**
+     * Lay cac user co role duoc chi dinh.
+     */
     public List<Map<String, Object>> findByRole(String roleName) {
         String sql = "SELECT u.id, u.username, u.fullName FROM [User] u " +
                      "JOIN UserRole ur ON u.id = ur.userId " +
@@ -78,5 +87,3 @@ public class UserRepository {
         return users;
     }
 }
-
-

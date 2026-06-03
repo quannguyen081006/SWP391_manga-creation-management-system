@@ -13,13 +13,16 @@
 <h2 class="page-title">Users</h2>
 <p class="page-sub">Admin user and role management</p>
 
+<%-- User management alerts: success and validation errors from controller actions. --%>
 <c:if test="${not empty success}"><div class="alert success">${success}</div></c:if>
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
+<%-- User creation action: opens the admin create-user form. --%>
 <div class="section-head">
     <div></div>
     <a class="btn primary" href="${pageContext.request.contextPath}/main/users/new">+ New User</a>
 </div>
 
+<%-- User table: status actions, current roles, and allowed role additions. --%>
 <div class="section-card">
     <table class="data-table">
         <thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Email</th><th>Status</th><th>Roles</th><th>Add Role</th><th>Actions</th></tr></thead>
@@ -101,6 +104,7 @@
     </table>
 </div>
 
+<%-- Role checkbox behavior: keeps role combinations aligned with business rules. --%>
 <script src="${pageContext.request.contextPath}/assets/role-assignment.js"></script>
 <jsp:include page="../common/footer.jsp" />
 </body>

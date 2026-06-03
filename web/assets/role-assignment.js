@@ -4,10 +4,12 @@
     var SINGLE_ONLY = { MANGAKA: true, ASSISTANT: true };
     var EDITOR_PAIR = { TANTOU_EDITOR: true, EDITORIAL_BOARD: true };
 
+    // Tim checkbox role trong mot role grid theo gia tri role.
     function findRole(root, role) {
         return root.querySelector('input[name="roles"][value="' + role + '"]');
     }
 
+    // Ap dung business rule: MANGAKA/ASSISTANT la single role, Tantou + Board duoc di chung.
     function enforceRoleRules(root, changed) {
         var isCreateUserForm = root.classList.contains('role-choice-grid');
         var boxes = root.querySelectorAll('input[name="roles"]');
@@ -54,6 +56,7 @@
         }
     }
 
+    // Gan event change cho cac form role trong trang create user va user list.
     function bindRoleForms() {
         var forms = document.querySelectorAll('.role-choice-grid, .role-check-grid');
         for (var i = 0; i < forms.length; i++) {

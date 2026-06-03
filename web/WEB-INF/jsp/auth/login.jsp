@@ -9,6 +9,7 @@
 </head>
 <body class="login-page">
     <main class="login-wrap" role="main">
+        <%-- Login artwork: decorative manga panels for the unauthenticated screen. --%>
         <section class="login-art" aria-hidden="true">
             <div class="manga-page">
                 <div class="manga-panel manga-panel-wide">
@@ -29,6 +30,7 @@
                 </div>
             </div>
         </section>
+        <%-- Login form: posts credentials to the web auth endpoint. --%>
         <section class="login-panel" aria-label="Sign in form">
             <div class="login-brand">
                 <div class="login-brand-mark">M</div>
@@ -58,6 +60,7 @@
             <div class="login-meta">Role-based access is enforced at API level.</div>
         </section>
     </main>
+    <%-- Version label for pre-login pages. --%>
     <div style="position:fixed; bottom:10px; right:16px; font-size:11px; color:#aaa;">v1.0</div>
 </body>
 </html>

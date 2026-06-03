@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.view.RedirectView;
 
+/**
+ * Controller xu ly trang notification cua user da dang nhap.
+ * Route: /main/notifications.
+ */
 @Controller
 @RequestMapping("/main/notifications")
 public class NotificationWebController {
@@ -18,6 +22,9 @@ public class NotificationWebController {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    /**
+     * Hien thi danh sach notification va so luong chua doc.
+     */
     @RequestMapping(method = RequestMethod.GET)
     public String list(HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
@@ -26,6 +33,9 @@ public class NotificationWebController {
         return "notification/list";
     }
 
+    /**
+     * Danh dau mot notification la da doc tu trang web.
+     */
     @RequestMapping(value = "/{id}/read", method = RequestMethod.POST)
     public String markRead(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = requireUser(session);
@@ -33,6 +43,9 @@ public class NotificationWebController {
         return "redirect:/main/notifications";
     }
 
+    /**
+     * Xu ly click notification: mark read roi redirect toi viewUrl hop le.
+     */
     @RequestMapping(value = "/{id}/click", method = RequestMethod.GET)
     public RedirectView click(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = requireUser(session);
@@ -44,6 +57,9 @@ public class NotificationWebController {
         return redirectTo("/main/notifications");
     }
 
+    /**
+     * Danh dau tat ca notification cua user hien tai la da doc.
+     */
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST)
     public String markAllRead(HttpSession session) {
         AuthenticatedUser user = requireUser(session);

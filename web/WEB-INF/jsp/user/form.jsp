@@ -14,8 +14,10 @@
 <h2 class="page-title">${editing ? 'Edit User' : 'Create User'}</h2>
 <p class="page-sub">Admin account management</p>
 
+<%-- Form error from create/update validation. --%>
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 
+<%-- User form: edit mode updates profile fields, create mode collects account and role data. --%>
 <div class="section-card">
 <c:choose>
 <c:when test="${editing}">
@@ -89,6 +91,7 @@
 </c:choose>
 </div>
 
+<%-- Role checkbox behavior: enforces single-role and valid dual-role combinations. --%>
 <script src="${pageContext.request.contextPath}/assets/role-assignment.js"></script>
 <jsp:include page="../common/footer.jsp" />
 </body>

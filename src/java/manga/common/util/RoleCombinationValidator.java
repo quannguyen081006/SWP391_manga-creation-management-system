@@ -6,6 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Validator kiem tra to hop role hop le khi tao hoac cap nhat user.
+ */
 public final class RoleCombinationValidator {
 
     private static final Set<String> DUAL_ROLE_ALLOWED = new HashSet<String>(
@@ -14,6 +17,9 @@ public final class RoleCombinationValidator {
     private RoleCombinationValidator() {
     }
 
+    /**
+     * Kiem tra danh sach role theo business rule cua user account.
+     */
     public static void validate(List<String> roles) {
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("Select at least one role");

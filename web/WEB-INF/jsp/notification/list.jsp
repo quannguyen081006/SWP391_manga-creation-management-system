@@ -10,6 +10,7 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
+<%-- Notification page header: unread count and mark-all action. --%>
 <div class="section-head">
     <div>
         <h2 class="page-title">Notifications</h2>
@@ -20,6 +21,7 @@
     </form>
 </div>
 
+<%-- Notification list: each row marks read and redirects through /click. --%>
 <div class="notification-list">
     <c:choose>
         <c:when test="${empty notifications}">

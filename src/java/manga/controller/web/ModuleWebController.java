@@ -20,9 +20,6 @@ import manga.service.RankingService;
 import manga.dto.SubmitVoteEntryRequest;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URLEncoder;
-import java.text.SimpleDateFormat;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,10 +27,8 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.Part;
-import static manga.common.util.SessionUserUtil.requireRole;
 import manga.enums.ManuscriptStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -43,6 +38,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
+/**
+ * Controller gom cac trang web chinh trong khu vuc /main.
+ */
 @Controller
 @RequestMapping("/main")
 public class ModuleWebController {
@@ -59,8 +57,6 @@ public class ModuleWebController {
     @Autowired
     private PageTaskRepository pageTaskRepository;
 
-    // @Autowired
-    // private AnnotationService annotationService;
     @Autowired
     private AnnotationServiceV2 annotationServiceV2;
 
@@ -480,6 +476,9 @@ public class ModuleWebController {
         }
     }
 
+    /**
+     * Hien thi trang quan ly user va role cho admin.
+     */
     @RequestMapping(value = "/users", method = RequestMethod.GET)
     public String users(
             HttpSession session,
@@ -502,6 +501,9 @@ public class ModuleWebController {
         return users(session, null, null, model);
     }
 
+    /**
+     * Mo form tao user moi.
+     */
     @RequestMapping(value = "/users/new", method = RequestMethod.GET)
     public String userNew(HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
@@ -513,6 +515,9 @@ public class ModuleWebController {
         return "user/form";
     }
 
+    /**
+     * Mo form cap nhat thong tin user.
+     */
     @RequestMapping(value = "/users/{id}/edit", method = RequestMethod.GET)
     public String userEdit(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
@@ -528,6 +533,9 @@ public class ModuleWebController {
         return "user/form";
     }
 
+    /**
+     * Tao user moi va gan cac role duoc chon.
+     */
     @RequestMapping(value = "/users/create", method = RequestMethod.POST)
     public String userCreate(
             HttpSession session,
@@ -564,6 +572,9 @@ public class ModuleWebController {
         }
     }
 
+    /**
+     * Cap nhat thong tin co ban cua user.
+     */
     @RequestMapping(value = "/users/{id}/update", method = RequestMethod.POST)
     public String userUpdate(
             @PathVariable("id") long id,
@@ -586,6 +597,9 @@ public class ModuleWebController {
         }
     }
 
+    /**
+     * Kich hoat hoac vo hieu hoa tai khoan user.
+     */
     @RequestMapping(value = "/users/{id}/status", method = RequestMethod.POST)
     public String userStatus(
             @PathVariable("id") long id,
@@ -606,6 +620,9 @@ public class ModuleWebController {
         }
     }
 
+    /**
+     * Them mot hoac nhieu role hop le cho user.
+     */
     @RequestMapping(value = "/users/{id}/roles", method = RequestMethod.POST)
     public String userRole(
             @PathVariable("id") long id,
@@ -636,6 +653,9 @@ public class ModuleWebController {
         }
     }
 
+    /**
+     * Go mot role hien co khoi user.
+     */
     @RequestMapping(value = "/users/{id}/roles/remove", method = RequestMethod.POST)
     public String userRoleRemove(
             @PathVariable("id") long id,
@@ -868,13 +888,6 @@ public class ModuleWebController {
         model.addAttribute("isAdmin", isAdmin);
         model.addAttribute("isReadonly", isReadonly);
         model.addAttribute("productionLocked", manuscriptVersionService.isProductionLocked(version.getChapterId()));
-
-        // Runtime logging for diagnostics
-        System.out.println("Workspace loaded: version=" + version.getId()
-                + ", chapter=" + chapter.getId()
-                + ", pages=" + pages.size()
-                + ", annotations=" + annotations.size()
-                + ", versionHistory=" + versionHistory.size());
 
         return "manuscript-version/workspace";
     }

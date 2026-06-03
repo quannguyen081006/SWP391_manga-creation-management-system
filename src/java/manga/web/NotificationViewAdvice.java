@@ -10,12 +10,18 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
+/**
+ * Controller advice dua notification summary vao model cho header.
+ */
 @ControllerAdvice(annotations = Controller.class)
 public class NotificationViewAdvice {
 
     @Autowired
     private NotificationRepository notificationRepository;
 
+    /**
+     * Cung cap so notification chua doc cho badge tren header.
+     */
     @ModelAttribute("headerUnreadNotificationCount")
     public int unreadCount(HttpSession session) {
         AuthenticatedUser user = getUser(session);
@@ -25,6 +31,9 @@ public class NotificationViewAdvice {
         return notificationRepository.unreadCount(user.getId());
     }
 
+    /**
+     * Cung cap danh sach notification cho dropdown tren header.
+     */
     @ModelAttribute("headerNotifications")
     public List<NotificationItem> latestNotifications(HttpSession session) {
         AuthenticatedUser user = getUser(session);
