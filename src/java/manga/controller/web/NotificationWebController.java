@@ -9,6 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.view.RedirectView;
 
 @Controller
 @RequestMapping("/main/notifications")
@@ -33,14 +34,14 @@ public class NotificationWebController {
     }
 
     @RequestMapping(value = "/{id}/click", method = RequestMethod.GET)
-    public String click(@PathVariable("id") long id, HttpSession session) {
+    public RedirectView click(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = requireUser(session);
         notificationRepository.markRead(user.getId(), id);
         String viewUrl = notificationRepository.viewUrlByUser(user.getId(), id);
-        if (viewUrl != null && !viewUrl.trim().isEmpty()) {
-            return "redirect:" + viewUrl;
+        if (isSupportedViewUrl(viewUrl)) {
+            return redirectTo(viewUrl);
         }
-        return "redirect:/main/notifications";
+        return redirectTo("/main/notifications");
     }
 
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST)
@@ -56,5 +57,35 @@ public class NotificationWebController {
             throw new IllegalArgumentException("Unauthorized");
         }
         return (AuthenticatedUser) auth;
+    }
+
+    private boolean isSupportedViewUrl(String viewUrl) {
+        if (viewUrl == null) {
+            return false;
+        }
+        String path = viewUrl.trim();
+        if (path.isEmpty() || !path.startsWith("/main/")) {
+            return false;
+        }
+        int queryIndex = path.indexOf('?');
+        if (queryIndex >= 0) {
+            path = path.substring(0, queryIndex);
+        }
+        return path.matches("/main/notifications")
+                || path.matches("/main/proposals/\\d+")
+                || path.matches("/main/proposals/\\d+/vote")
+                || path.matches("/main/proposals/\\d+/edit")
+                || path.matches("/main/tasks/\\d+")
+                || path.matches("/main/chapters")
+                || path.matches("/main/chapters/\\d+")
+                || path.matches("/main/chapters/detail")
+                || path.matches("/main/decisions/\\d+")
+                || path.matches("/main/ranking/periods(/\\d+/(results|mangaka))?");
+    }
+
+    private RedirectView redirectTo(String path) {
+        RedirectView view = new RedirectView(path, true);
+        view.setExposeModelAttributes(false);
+        return view;
     }
 }

@@ -64,7 +64,7 @@
         <a class="side-brand" href="${ctx}/main/dashboard" title="Back to Dashboard">
             <div class="brand-icon">MF</div>
             <div>
-                <div class="brand-name">MangaFlow</div>
+                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v1.1</span></div>
                 <div class="brand-sub">Manga Studio Ops</div>
             </div>
         </a>
@@ -126,7 +126,7 @@
     <section class="main-shell">
         <header class="top-shell">
             <div class="page-head">
-                <h1>${displayRole} Dashboard</h1>
+                <h1>Dashboard</h1>
                 <c:if test="${sessionScope.AUTH_USER != null && sessionScope.AUTH_USER.hasRole('ADMIN')}">
                     <span class="role-pill role-admin">Admin</span>
                 </c:if>
@@ -172,7 +172,7 @@
                                         <div class="notify-item-main">
                                             <div class="noti-title">${empty n.title ? n.type : n.title}</div>
                                             <div class="noti-message">${n.message}</div>
-                                            <div class="noti-time">${n.createdAt}</div>
+                                            <div class="noti-time" data-time="${n.createdAt}"></div>
                                         </div>
                                         <c:if test="${!n.read}">
                                             <span class="noti-dot" aria-hidden="true"></span>
@@ -289,6 +289,38 @@
                         });
                     }
                 }());
+            </script>
+            <script>
+                function timeAgo(dateStr) {
+                    if (!dateStr) {
+                        return '';
+                    }
+                    var normalized = String(dateStr).trim().replace(' ', 'T');
+                    var date = new Date(normalized);
+                    if (isNaN(date.getTime())) {
+                        return dateStr;
+                    }
+                    var now = new Date();
+                    var diff = Math.floor((now - date) / 1000);
+                    if (diff < 60) return 'Just now';
+                    if (diff < 3600) return Math.floor(diff / 60) + ' minutes ago';
+                    if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+                    if (diff < 604800) return Math.floor(diff / 86400) + ' days ago';
+                    return Math.floor(diff / 604800) + ' weeks ago';
+                }
+
+                function renderNotificationTimes() {
+                    document.querySelectorAll('.noti-time').forEach(function (el) {
+                        var raw = el.dataset.time || el.textContent.trim();
+                        el.textContent = timeAgo(raw);
+                    });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', renderNotificationTimes);
+                } else {
+                    renderNotificationTimes();
+                }
             </script>
 
 

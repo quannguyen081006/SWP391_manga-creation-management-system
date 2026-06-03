@@ -94,13 +94,21 @@ public class NotificationRepository {
     }
 
     public String viewUrlByUser(long userId, long id) {
-        String sql = "SELECT viewUrl FROM Notification WHERE id = ? AND userId = ?";
+        String sql = "SELECT type, viewUrl, referenceId FROM Notification WHERE id = ? AND userId = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             ps.setLong(2, userId);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getString("viewUrl") : null;
+                if (!rs.next()) {
+                    return null;
+                }
+                String type = rs.getString("type");
+                if ("SERIES_DEADLINE_UPDATED".equalsIgnoreCase(type)) {
+                    long referenceId = rs.getLong("referenceId");
+                    return rs.wasNull() ? "/main/notifications" : "/main/chapters?seriesId=" + referenceId;
+                }
+                return rs.getString("viewUrl");
             }
         } catch (SQLException ex) {
             throw new RuntimeException("Cannot load notification view URL", ex);
@@ -176,13 +184,7 @@ public class NotificationRepository {
             return "/main/chapters/" + referenceId;
         }
         if (ref.equals("MANUSCRIPT")) {
-            if ("MANUSCRIPT_SUBMITTED".equals(normalized) || "MANUSCRIPT_REVIEW_REMINDER".equals(normalized)) {
-                return "/main/manuscripts/" + referenceId + "/versions/" + referenceId + "/review";
-            }
-            if ("MANUSCRIPT_REJECTED".equals(normalized)) {
-                return "/main/manuscripts/" + referenceId + "?tab=feedback";
-            }
-            return "/main/manuscripts/" + referenceId;
+            return "/main/notifications";
         }
         if (ref.equals("PROPOSAL")) {
             if (normalized.contains("VOTE")) {
@@ -194,7 +196,7 @@ public class NotificationRepository {
             return "/main/decisions/" + referenceId;
         }
         if (ref.equals("SERIES")) {
-            return "/main/series/" + referenceId;
+            return "/main/notifications";
         }
         return null;
     }

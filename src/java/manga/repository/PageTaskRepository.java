@@ -1206,13 +1206,7 @@ public class PageTaskRepository {
             return "/main/chapters/" + referenceId;
         }
         if ("MANUSCRIPT".equals(normalizedRef)) {
-            if ("MANUSCRIPT_REVIEW_REMINDER".equals(normalizedType)) {
-                return "/main/manuscripts/" + referenceId + "/review";
-            }
-            if ("MANUSCRIPT_REJECTED".equals(normalizedType)) {
-                return "/main/manuscripts/" + referenceId + "?tab=feedback";
-            }
-            return "/main/manuscripts/" + referenceId;
+            return "/main/notifications";
         }
         if ("DECISION".equals(normalizedRef) || "DECISION_SESSION".equals(normalizedRef)) {
             return "/main/decisions/" + referenceId;
@@ -1221,7 +1215,7 @@ public class PageTaskRepository {
             return "/main/proposals/" + referenceId;
         }
         if ("SERIES".equals(normalizedRef)) {
-            return "/main/series/" + referenceId;
+            return "/main/notifications";
         }
         return null;
     }

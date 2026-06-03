@@ -936,7 +936,7 @@ public class ProposalRepository {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, proposal.getMangakaId());
             ps.setString(2, message);
-            ps.setString(3, "/main/series/" + seriesId);
+            ps.setString(3, "/main/notifications");
             ps.setLong(4, seriesId);
             ps.executeUpdate();
         }
@@ -944,7 +944,7 @@ public class ProposalRepository {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, proposal.getAssignedEditorId().longValue());
                 ps.setString(2, message);
-                ps.setString(3, "/main/series/" + seriesId);
+                ps.setString(3, "/main/notifications");
                 ps.setLong(4, seriesId);
                 ps.executeUpdate();
             }

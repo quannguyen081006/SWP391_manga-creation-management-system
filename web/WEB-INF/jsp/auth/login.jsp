@@ -58,6 +58,7 @@
             <div class="login-meta">Role-based access is enforced at API level.</div>
         </section>
     </main>
+    <div style="position:fixed; bottom:10px; right:16px; font-size:11px; color:#aaa;">v1.0</div>
 </body>
 </html>
 
