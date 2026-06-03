@@ -29,7 +29,8 @@
         </c:when>
         <c:otherwise>
             <c:forEach items="${notifications}" var="n">
-                <article class="notification-row noti-item ${n.read ? 'is-read read' : 'is-unread unread'}">
+                <a href="${pageContext.request.contextPath}/main/notifications/${n.id}/click"
+                   class="notification-row noti-item ${n.read ? 'is-read read' : 'is-unread unread'}">
                     <div class="notification-main">
                         <div class="notification-row-head">
                             <span class="notification-title">${empty n.title ? n.type : n.title}</span>
@@ -40,22 +41,10 @@
                             <span class="status-chip status-draft">${n.referenceType} #${n.referenceId}</span>
                         </c:if>
                     </div>
-                    <div class="notification-actions">
-                        <c:if test="${not empty n.viewUrl}">
-                            <a class="btn small primary" href="${pageContext.request.contextPath}${n.viewUrl}">View</a>
-                        </c:if>
-                        <c:choose>
-                            <c:when test="${n.read}">
-                                <span class="status-badge status-active">READ</span>
-                            </c:when>
-                            <c:otherwise>
-                                <form method="post" action="${pageContext.request.contextPath}/main/notifications/${n.id}/read">
-                                    <button class="btn small" type="submit">Mark read</button>
-                                </form>
-                            </c:otherwise>
-                        </c:choose>
-                    </div>
-                </article>
+                    <c:if test="${!n.read}">
+                        <span class="noti-dot notification-dot" aria-hidden="true"></span>
+                    </c:if>
+                </a>
             </c:forEach>
         </c:otherwise>
     </c:choose>

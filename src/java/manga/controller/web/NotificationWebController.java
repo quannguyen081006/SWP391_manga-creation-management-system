@@ -32,6 +32,17 @@ public class NotificationWebController {
         return "redirect:/main/notifications";
     }
 
+    @RequestMapping(value = "/{id}/click", method = RequestMethod.GET)
+    public String click(@PathVariable("id") long id, HttpSession session) {
+        AuthenticatedUser user = requireUser(session);
+        notificationRepository.markRead(user.getId(), id);
+        String viewUrl = notificationRepository.viewUrlByUser(user.getId(), id);
+        if (viewUrl != null && !viewUrl.trim().isEmpty()) {
+            return "redirect:" + viewUrl;
+        }
+        return "redirect:/main/notifications";
+    }
+
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST)
     public String markAllRead(HttpSession session) {
         AuthenticatedUser user = requireUser(session);

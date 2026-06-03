@@ -93,6 +93,20 @@ public class NotificationRepository {
         }
     }
 
+    public String viewUrlByUser(long userId, long id) {
+        String sql = "SELECT viewUrl FROM Notification WHERE id = ? AND userId = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ps.setLong(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("viewUrl") : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot load notification view URL", ex);
+        }
+    }
+
     private void update(String sql, long id, long userId) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
