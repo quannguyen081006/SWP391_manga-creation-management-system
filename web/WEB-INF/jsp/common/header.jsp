@@ -83,7 +83,7 @@
         <a class="side-brand" href="${ctx}/main/dashboard" title="Back to Dashboard">
             <div class="brand-icon">MF</div>
             <div>
-                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v1.4</span></div>
+                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v1.5</span></div>
                 <div class="brand-sub">Manga Studio Ops</div>
             </div>
         </a>
@@ -256,9 +256,99 @@
                     <div class="user-name"><c:out value="${displayName}" default="Yuki Tanaka"/></div>
                     <%-- Role switcher: quick test helper that loads active users from the auth API. --%>
                     <div class="user-actions">
+                        <style>
+                            .role-switch-menu-grouped {
+                                min-width: 220px;
+                                overflow: visible;
+                                padding: 8px 0;
+                            }
+
+                            .role-switch-group {
+                                position: relative;
+                            }
+
+                            .role-switch-group-btn {
+                                align-items: center;
+                                background: none;
+                                border: none;
+                                color: #1f2937;
+                                cursor: pointer;
+                                display: flex;
+                                font-size: 14px;
+                                font-weight: 600;
+                                justify-content: space-between;
+                                padding: 10px 14px;
+                                text-align: left;
+                                width: 100%;
+                            }
+
+                            .role-switch-group-btn:hover,
+                            .role-switch-group:focus-within .role-switch-group-btn {
+                                background: #f3f4f6;
+                            }
+
+                            .role-switch-arrow {
+                                color: #6b7280;
+                                font-size: 11px;
+                                margin-left: 16px;
+                            }
+
+                            .role-switch-submenu {
+                                background: #ffffff;
+                                border: 1px solid #e5e7eb;
+                                border-radius: 12px;
+                                box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+                                display: none;
+                                min-width: 220px;
+                                padding: 8px 0;
+                                position: absolute;
+                                right: 100%;
+                                top: 0;
+                                z-index: 31;
+                            }
+
+                            .role-switch-group:hover .role-switch-submenu,
+                            .role-switch-group:focus-within .role-switch-submenu {
+                                display: block;
+                            }
+
+                            .role-switch-user {
+                                align-items: center;
+                                color: #1f2937;
+                                display: flex;
+                                font-size: 14px;
+                                gap: 8px;
+                                padding: 9px 14px;
+                                text-decoration: none;
+                                white-space: nowrap;
+                            }
+
+                            .role-switch-user:hover {
+                                background: #f3f4f6;
+                            }
+
+                            .role-switch-user.active {
+                                color: #1877f2;
+                                font-weight: 700;
+                            }
+
+                            .role-switch-check {
+                                color: #1877f2;
+                                flex: 0 0 14px;
+                                width: 14px;
+                            }
+
+                            .role-switch-empty {
+                                color: #9ca3af;
+                                display: block;
+                                font-size: 13px;
+                                padding: 9px 14px;
+                                white-space: nowrap;
+                            }
+                        </style>
                         <details class="role-switcher" id="roleSwitcherDropdown">
                             <summary class="user-sub switch-toggle">Switch role</summary>
-                            <div class="role-switch-menu" id="roleSwitchMenu">
+                            <div class="role-switch-menu role-switch-menu-grouped" id="roleSwitchMenu">
                                 <span style="padding:8px;display:block;color:#888">Loading...</span>
                             </div>
                         </details>
@@ -285,20 +375,41 @@
                                                     menu.innerHTML = '<span style="padding:8px;display:block;color:#c00">Failed to load</span>';
                                                     return;
                                                 }
-                                                var html = '';
+                                                var groups = [
+                                                    { role: 'ADMIN', label: 'Admin', users: [] },
+                                                    { role: 'MANGAKA', label: 'Mangaka', users: [] },
+                                                    { role: 'ASSISTANT', label: 'Assistant', users: [] },
+                                                    { role: 'TANTOU_EDITOR', label: 'Tantou Editor', users: [] },
+                                                    { role: 'EDITORIAL_BOARD', label: 'Board Member', users: [] }
+                                                ];
                                                 json.data.forEach(function (user) {
-                                                    var items = user.switchItems || [];
-                                                    if (!items.length) {
-                                                        items = [{ label: user.fullName ? (user.fullName + ' (' + user.username + ')') : user.username }];
-                                                    }
-                                                    items.forEach(function (item) {
-                                                        var isActive = user.username === currentUsername;
-                                                        html += '<a class="role-switch-item' + (isActive ? ' active' : '') + '"'
-                                                                + ' href="' + ctx + '/main/switch-role?username=' + encodeURIComponent(user.username) + '">'
-                                                                + escapeHtml(item.label)
-                                                                + '</a>';
+                                                    groups.forEach(function (group) {
+                                                        if (hasRole(user, group.role)) {
+                                                            group.users.push(user);
+                                                        }
                                                     });
                                                 });
+                                                var html = groups.map(function (group) {
+                                                    var usersHtml = group.users.map(function (user) {
+                                                        var isActive = user.username === currentUsername;
+                                                        var name = user.fullName || user.username;
+                                                        return '<a class="role-switch-user' + (isActive ? ' active' : '') + '"'
+                                                                + ' href="' + ctx + '/main/switch-role?username=' + encodeURIComponent(user.username) + '">'
+                                                                + '<span class="role-switch-check">' + (isActive ? '✓' : '') + '</span>'
+                                                                + '<span>' + escapeHtml(name) + '</span>'
+                                                                + '</a>';
+                                                    }).join('');
+                                                    if (!usersHtml) {
+                                                        usersHtml = '<span class="role-switch-empty">No users</span>';
+                                                    }
+                                                    return '<div class="role-switch-group">'
+                                                            + '<button type="button" class="role-switch-group-btn">'
+                                                            + '<span>' + escapeHtml(group.label) + '</span>'
+                                                            + '<span class="role-switch-arrow">▶</span>'
+                                                            + '</button>'
+                                                            + '<div class="role-switch-submenu">' + usersHtml + '</div>'
+                                                            + '</div>';
+                                                }).join('');
                                                 menu.innerHTML = html || '<span style="padding:8px;display:block;color:#888">No users found</span>';
                                             })
                                             .catch(function () {
@@ -312,6 +423,22 @@
                                             .replace(/</g, '&lt;')
                                             .replace(/>/g, '&gt;')
                                             .replace(/"/g, '&quot;');
+                                }
+
+                                function hasRole(user, role) {
+                                    var roles = user.roles || [];
+                                    return roles.some(function (item) {
+                                        if (typeof item === 'string') {
+                                            return item === role;
+                                        }
+                                        if (item && item.name) {
+                                            return item.name === role;
+                                        }
+                                        if (item && item.roleName) {
+                                            return item.roleName === role;
+                                        }
+                                        return false;
+                                    });
                                 }
                             }());
                         </script>
