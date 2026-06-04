@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller xu ly auth API: login, logout, session check va role switch data.
+ * Exposes authentication JSON endpoints for login/logout, current-session
+ * checks, and role switch data used by the shared header.
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -29,7 +30,12 @@ public class AuthApiController {
     private UserAdminRepository userAdminRepository;
 
     /**
-     * Xac thuc user qua API va luu AUTH_USER vao session.
+     * Authenticates credentials through the API and stores `AUTH_USER`.
+     *
+     * @param username submitted username
+     * @param password submitted password
+     * @param session current HTTP session
+     * @return API response containing authenticated user summary
      */
     @RequestMapping(value = "/login", method = RequestMethod.POST)
     public ApiResponse<Map<String, Object>> login(
@@ -49,7 +55,10 @@ public class AuthApiController {
     }
 
     /**
-     * Huy session dang nhap hien tai qua API.
+     * Logs out the current API session.
+     *
+     * @param session current HTTP session
+     * @return empty success response
      */
     @RequestMapping(value = "/logout", method = RequestMethod.POST)
     public ApiResponse<Object> logout(HttpSession session) {
@@ -58,7 +67,10 @@ public class AuthApiController {
     }
 
     /**
-     * Tra ve user hien tai va danh sach role dang co trong session.
+     * Returns the currently authenticated user's profile and role names.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return API response containing id, username, fullName, and roles
      */
     @RequestMapping(value = "/me", method = RequestMethod.GET)
     public ApiResponse<Map<String, Object>> me(HttpSession session) {
@@ -76,7 +88,10 @@ public class AuthApiController {
     }
 
     /**
-     * Tra ve danh sach role switch item cua user hien tai.
+     * Returns display labels for the current user's assigned roles.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return API response containing role switch items
      */
     @RequestMapping(value = "/roles", method = RequestMethod.GET)
     public ApiResponse<List<Map<String, Object>>> roles(HttpSession session) {
@@ -88,7 +103,10 @@ public class AuthApiController {
     }
 
     /**
-     * Tra ve danh sach user active de dropdown switch role trong header su dung.
+     * Returns active users and roles for the header switch-role dropdown.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return API response containing active switchable users
      */
     @RequestMapping(value = "/switch-list", method = RequestMethod.GET)
     public ApiResponse<List<Map<String, Object>>> switchList(HttpSession session) {

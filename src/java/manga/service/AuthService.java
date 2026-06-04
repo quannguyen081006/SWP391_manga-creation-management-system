@@ -12,7 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Service xac thuc user va ho tro khoi tao tai khoan test.
+ * Authenticates users and loads authenticated principals for the web/API layer.
+ * It also contains local test-account seeding used by the development switch
+ * role workflow.
  */
 @Service
 public class AuthService {
@@ -27,10 +29,15 @@ public class AuthService {
     private DataSource dataSource;
 
     /**
-     * Dang nhap bang username/password va tra ve user da xac thuc.
+     * Authenticates a username/password pair and returns the active user.
+     *
+     * @param username submitted username
+     * @param password submitted password
+     * @return authenticated user with roles loaded
      */
     public AuthenticatedUser login(String username, String password) {
         if (username != null) {
+            // Development helper: known demo users are created lazily for testing.
             ensureTestingAccountExists(username.trim());
             ensureTestingAssignments(username.trim());
         }
@@ -43,6 +50,7 @@ public class AuthService {
             throw new IllegalArgumentException("This account is inactive");
         }
 
+        // Current project stores the plain password value in passwordHash.
         if (password == null || !password.equals(user.getPasswordHash())) {
             throw new IllegalArgumentException("Username or password is incorrect");
         }
@@ -51,7 +59,10 @@ public class AuthService {
     }
 
     /**
-     * Lay user active theo username de phuc vu switch role khi test.
+     * Loads an active user by username for the switch-role testing helper.
+     *
+     * @param username username to switch into
+     * @return authenticated user with roles loaded
      */
     public AuthenticatedUser switchUserForTesting(String username) {
         if (username == null || username.trim().isEmpty()) {
@@ -79,6 +90,7 @@ public class AuthService {
 
         String role;
         String fullName;
+        // Demo accounts map directly to the five BR-SYS role families.
         if ("admin".equalsIgnoreCase(username)) {
             role = "ADMIN";
             fullName = "System Admin";
@@ -120,6 +132,7 @@ public class AuthService {
             return;
         }
 
+        // Seed a small Mangaka/Assistant relationship set for task testing.
         ensureTestingAccountExists("mangaka1");
         ensureTestingAssistant("assistant1", "Aiko Mori", "asst1@mangaflow.local");
         ensureTestingAssistant("assistant2", "Riku Hayashi", "asst2@mangaflow.local");

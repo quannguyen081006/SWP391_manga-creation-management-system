@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Validator kiem tra to hop role hop le khi tao hoac cap nhat user.
+ * Validates BR-SYS role-combination rules for user accounts.
+ * The backend and frontend both mirror these rules to prevent invalid role sets.
  */
 public final class RoleCombinationValidator {
 
@@ -18,7 +19,10 @@ public final class RoleCombinationValidator {
     }
 
     /**
-     * Kiem tra danh sach role theo business rule cua user account.
+     * Validates a list of roles against allowed account combinations.
+     *
+     * @param roles role names submitted for a user
+     * @return nothing; throws an exception when the combination is invalid
      */
     public static void validate(List<String> roles) {
         if (roles == null || roles.isEmpty()) {
@@ -40,13 +44,16 @@ public final class RoleCombinationValidator {
         if (distinct.size() <= 1) {
             return;
         }
+        // BR-SYS: Mangaka and Assistant are single-role account types.
         if (distinct.contains("MANGAKA") || distinct.contains("ASSISTANT")) {
             throw new IllegalArgumentException(
                     "Mangaka and Assistant accounts must have a single role only");
         }
+        // BR-SYS-01: ADMIN is isolated and cannot be mixed with operational roles.
         if (distinct.contains("ADMIN")) {
             throw new IllegalArgumentException("ADMIN cannot be combined with other roles");
         }
+        // BR-SYS: only the editor/board pairing is allowed as a dual role.
         if (distinct.size() > 2) {
             throw new IllegalArgumentException(
                     "Only Tantou Editor and Editorial Board can hold dual roles");

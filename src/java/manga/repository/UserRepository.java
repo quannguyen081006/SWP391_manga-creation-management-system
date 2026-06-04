@@ -14,7 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repository doc thong tin user dang nhap va danh sach user theo role.
+ * Reads user account data for authentication and role-based lookups.
+ * This repository builds {@link AuthenticatedUser} instances used in sessions.
  */
 @Repository
 public class UserRepository {
@@ -23,7 +24,10 @@ public class UserRepository {
     private DataSource dataSource;
 
     /**
-     * Tim user dang nhap theo username va nap danh sach role.
+     * Finds a user by username and loads all assigned roles.
+     *
+     * @param username username to search for
+     * @return authenticated user with role set populated, or {@code null}
      */
     public AuthenticatedUser findByUsername(String username) {
         String sql = "SELECT id, username, passwordHash, fullName, status FROM [User] WHERE username = ?";
@@ -49,6 +53,7 @@ public class UserRepository {
     }
 
     private void loadRoles(Connection conn, AuthenticatedUser user) throws SQLException {
+        // Roles are loaded with the user so session checks can use user.hasRole(...).
         String sql = "SELECT r.name FROM UserRole ur JOIN [Role] r ON ur.roleId = r.id WHERE ur.userId = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, user.getId());
@@ -61,7 +66,10 @@ public class UserRepository {
     }
 
     /**
-     * Lay cac user co role duoc chi dinh.
+     * Finds users assigned to a specific role.
+     *
+     * @param roleName role name to filter by
+     * @return list of users containing id, username, and fullName
      */
     public List<Map<String, Object>> findByRole(String roleName) {
         String sql = "SELECT u.id, u.username, u.fullName FROM [User] u " +

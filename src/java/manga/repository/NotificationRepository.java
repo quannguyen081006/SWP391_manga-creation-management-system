@@ -12,7 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repository thao tac bang Notification va map du lieu sang NotificationItem.
+ * Persists notification records and maps database rows to {@link NotificationItem}.
+ * It is the single data-access point used by the header dropdown, full
+ * notification page, and notification API actions.
  */
 @Repository
 public class NotificationRepository {
@@ -21,14 +23,30 @@ public class NotificationRepository {
     private DataSource dataSource;
 
     /**
-     * Tao notification voi title va viewUrl mac dinh theo loai tham chieu.
+     * Creates a notification and derives its title and stored view URL.
+     *
+     * @param userId target user id
+     * @param type notification type
+     * @param message user-facing message
+     * @param referenceId related entity id, or a non-positive value when absent
+     * @param referenceType related entity type used for view URL mapping
+     * @return nothing; the notification row is inserted as a side effect
      */
     public void create(long userId, String type, String message, long referenceId, String referenceType) {
         create(userId, type, defaultTitle(type), message, defaultViewUrl(type, referenceId, referenceType), referenceId, referenceType);
     }
 
     /**
-     * Tao notification voi day du title, message va viewUrl da tinh san.
+     * Creates a notification with a caller-provided title and stored view URL.
+     *
+     * @param userId target user id
+     * @param type notification type
+     * @param title user-facing notification title
+     * @param message user-facing notification message
+     * @param viewUrl stored redirect target captured at creation time
+     * @param referenceId related entity id, or a non-positive value when absent
+     * @param referenceType related entity type
+     * @return nothing; the notification row is inserted as a side effect
      */
     public void create(long userId, String type, String title, String message, String viewUrl, long referenceId, String referenceType) {
         String sql = "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, 0, GETDATE())";
@@ -39,6 +57,7 @@ public class NotificationRepository {
             ps.setString(3, title);
             ps.setString(4, message);
             ps.setString(5, viewUrl);
+            // Store absent references as NULL so duplicate checks and redirects stay explicit.
             if (referenceId <= 0) {
                 ps.setNull(6, java.sql.Types.BIGINT);
             } else {
@@ -52,16 +71,24 @@ public class NotificationRepository {
     }
 
     /**
-     * Lay danh sach notification mac dinh cua user.
+     * Lists the default number of notifications for a user.
+     *
+     * @param userId owner user id
+     * @return up to 100 notifications ordered newest first
      */
     public List<NotificationItem> listByUser(long userId) {
         return listByUser(userId, 100);
     }
 
     /**
-     * Lay notification cua user voi gioi han so dong.
+     * Lists notifications for a user with an explicit row limit.
+     *
+     * @param userId owner user id
+     * @param limit maximum number of notifications to return
+     * @return notifications ordered newest first
      */
     public List<NotificationItem> listByUser(long userId, int limit) {
+        // SQL Server TOP is parameterized so the header can request many rows safely.
         String sql = "SELECT TOP (?) id, userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt FROM Notification WHERE userId = ? ORDER BY createdAt DESC";
         List<NotificationItem> rows = new ArrayList<NotificationItem>();
         try (Connection conn = dataSource.getConnection();
@@ -80,7 +107,10 @@ public class NotificationRepository {
     }
 
     /**
-     * Dem so notification chua doc cua user.
+     * Counts unread notifications for a user.
+     *
+     * @param userId owner user id
+     * @return unread notification count
      */
     public int unreadCount(long userId) {
         String sql = "SELECT COUNT(*) FROM Notification WHERE userId = ? AND isRead = 0";
@@ -96,7 +126,11 @@ public class NotificationRepository {
     }
 
     /**
-     * Danh dau notification cua user la da doc.
+     * Marks one notification as read for its owner.
+     *
+     * @param userId owner user id
+     * @param id notification id
+     * @return nothing; the row is updated as a side effect
      */
     public void markRead(long userId, long id) {
         String sql = "UPDATE Notification SET isRead = 1 WHERE id = ? AND userId = ?";
@@ -104,7 +138,11 @@ public class NotificationRepository {
     }
 
     /**
-     * Danh dau notification cua user la chua doc.
+     * Marks one notification as unread for its owner.
+     *
+     * @param userId owner user id
+     * @param id notification id
+     * @return nothing; the row is updated as a side effect
      */
     public void markUnread(long userId, long id) {
         String sql = "UPDATE Notification SET isRead = 0 WHERE id = ? AND userId = ?";
@@ -112,7 +150,11 @@ public class NotificationRepository {
     }
 
     /**
-     * Xoa notification neu no thuoc ve user.
+     * Deletes one notification when it belongs to the user.
+     *
+     * @param userId owner user id
+     * @param id notification id
+     * @return nothing; the row is deleted as a side effect
      */
     public void delete(long userId, long id) {
         String sql = "DELETE FROM Notification WHERE id = ? AND userId = ?";
@@ -120,7 +162,10 @@ public class NotificationRepository {
     }
 
     /**
-     * Danh dau toan bo notification cua user la da doc.
+     * Marks every unread notification for a user as read.
+     *
+     * @param userId owner user id
+     * @return nothing; matching rows are updated as a side effect
      */
     public void markAllRead(long userId) {
         String sql = "UPDATE Notification SET isRead = 1 WHERE userId = ? AND isRead = 0";
@@ -134,8 +179,12 @@ public class NotificationRepository {
     }
 
     /**
-     * Check if a notification of a given type and reference already exists for a user.
-     * Used to prevent duplicate reminders.
+     * Checks whether a notification of a given type/reference already exists.
+     *
+     * @param userId owner user id
+     * @param type notification type
+     * @param referenceId related entity id, or a non-positive value when absent
+     * @return {@code true} when a duplicate notification exists
      */
     public boolean exists(long userId, String type, long referenceId) {
         String sql = "SELECT COUNT(*) FROM Notification WHERE userId = ? AND type = ? AND referenceId = ?";
@@ -143,6 +192,7 @@ public class NotificationRepository {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, userId);
             ps.setString(2, type);
+            // Match the same NULL storage convention used during create().
             if (referenceId <= 0) {
                 ps.setNull(3, java.sql.Types.BIGINT);
             } else {
@@ -160,7 +210,11 @@ public class NotificationRepository {
     }
 
     /**
-     * Lay viewUrl cho notification cua user, co sua fallback cho URL cu.
+     * Loads the stored view URL for a notification owned by a user.
+     *
+     * @param userId owner user id
+     * @param id notification id
+     * @return stored view URL, a legacy fallback URL, or {@code null}
      */
     public String viewUrlByUser(long userId, long id) {
         String sql = "SELECT type, viewUrl, referenceId FROM Notification WHERE id = ? AND userId = ?";
@@ -173,6 +227,11 @@ public class NotificationRepository {
                     return null;
                 }
                 String type = rs.getString("type");
+                /*
+                 * Notification viewUrl should be stored at creation time. This branch keeps
+                 * older SERIES_DEADLINE_UPDATED rows usable when they were saved before the
+                 * chapters route was supported.
+                 */
                 if ("SERIES_DEADLINE_UPDATED".equalsIgnoreCase(type)) {
                     long referenceId = rs.getLong("referenceId");
                     return rs.wasNull() ? "/main/notifications" : "/main/chapters?seriesId=" + referenceId;
@@ -216,6 +275,7 @@ public class NotificationRepository {
             return "Notification";
         }
         String normalized = type.trim().toUpperCase();
+        // Keep titles generic by module so BR-PRO/BR-VOT/BR-TSK/BR-MAN events share UI language.
         if (normalized.contains("TASK")) {
             return "Task update";
         }
@@ -243,6 +303,7 @@ public class NotificationRepository {
         }
         String normalized = type.trim().toUpperCase();
         String ref = referenceType == null ? "" : referenceType.trim().toUpperCase();
+        // Store the redirect target at creation time so click handling only validates it.
         if (ref.equals("TASK") || ref.equals("PAGETASK")) {
             if ("TASK_ESCALATED".equals(normalized)) {
                 return "/main/tasks/" + referenceId + "?tab=history";

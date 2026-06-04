@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller cung cap API notification cho client-side actions.
- * Route: /api/v1/notifications.
+ * Exposes JSON notification actions for the header dropdown and full page.
+ * All actions are scoped to the authenticated user from the HTTP session.
  */
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -24,7 +24,10 @@ public class NotificationApiController {
     private NotificationRepository notificationRepository;
 
     /**
-     * Tra ve danh sach notification cua user hien tai.
+     * Lists notifications for the authenticated user.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return JSON response containing notification data
      */
     @RequestMapping(method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
     public String list(HttpSession session) {
@@ -33,7 +36,11 @@ public class NotificationApiController {
     }
 
     /**
-     * Danh dau mot notification la da doc qua API.
+     * Marks one notification as read through the API.
+     *
+     * @param id notification id
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return JSON success response
      */
     @RequestMapping(value = "/{id}/read", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
     public String markRead(@PathVariable("id") long id, HttpSession session) {
@@ -43,7 +50,11 @@ public class NotificationApiController {
     }
 
     /**
-     * Danh dau mot notification la chua doc qua API.
+     * Marks one notification as unread through the API.
+     *
+     * @param id notification id
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return JSON success response
      */
     @RequestMapping(value = "/{id}/unread", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
     public String markUnread(@PathVariable("id") long id, HttpSession session) {
@@ -53,7 +64,11 @@ public class NotificationApiController {
     }
 
     /**
-     * Xoa notification cua user hien tai qua API.
+     * Deletes one notification owned by the authenticated user.
+     *
+     * @param id notification id
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return JSON success response
      */
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = "application/json;charset=UTF-8")
     public String delete(@PathVariable("id") long id, HttpSession session) {
@@ -63,7 +78,10 @@ public class NotificationApiController {
     }
 
     /**
-     * Danh dau tat ca notification cua user hien tai la da doc qua API.
+     * Marks every notification for the authenticated user as read.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return JSON success response
      */
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
     public String markAllRead(HttpSession session) {
@@ -90,6 +108,7 @@ public class NotificationApiController {
     }
 
     private void appendItem(StringBuilder builder, NotificationItem item) {
+        // Keep legacy field aliases so older frontend code can read the same payload.
         builder.append("{");
         builder.append("\"id\":").append(item.getId()).append(",");
         builder.append("\"userId\":").append(item.getUserId()).append(",");
@@ -115,6 +134,7 @@ public class NotificationApiController {
         StringBuilder builder = new StringBuilder("\"");
         for (int i = 0; i < value.length(); i++) {
             char ch = value.charAt(i);
+            // Manual escaping keeps this Java 8 project independent from a JSON library.
             switch (ch) {
                 case '"':
                     builder.append("\\\"");

@@ -14,7 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repository phuc vu admin quan ly user, status va role.
+ * Provides admin-facing user management data access for accounts, statuses,
+ * role assignment, and switch-role dropdown data.
  */
 @Repository
 public class UserAdminRepository {
@@ -23,7 +24,9 @@ public class UserAdminRepository {
     private DataSource dataSource;
 
     /**
-     * Lay danh sach user kem role de hien thi trang quan tri.
+     * Lists all users with their assigned role names for admin screens.
+     *
+     * @return all user rows with a `roles` list added to each map
      */
     public List<Map<String, Object>> listUsers() {
         String sql = "SELECT id, username, fullName, email, status, createdAt, updatedAt FROM [User] ORDER BY id";
@@ -43,7 +46,9 @@ public class UserAdminRepository {
     }
 
     /**
-     * Lay user active kem nhan role phuc vu switch role khi test.
+     * Lists active users with roles for the header switch-role menu.
+     *
+     * @return active users with `roles` and display-oriented `switchItems`
      */
     public List<Map<String, Object>> listActiveUsersForSwitch() {
         String sql = "SELECT id, username, fullName, email, status, createdAt, updatedAt FROM [User] WHERE status = 'ACTIVE' ORDER BY id";
@@ -72,6 +77,7 @@ public class UserAdminRepository {
                 @SuppressWarnings("unchecked")
                 List<String> roles = (List<String>) rawRoles;
                 for (String role : roles) {
+                    // Number users by role so the switch UI can show stable role labels.
                     Integer current = roleIndexes.get(role);
                     int next = current == null ? 1 : current.intValue() + 1;
                     roleIndexes.put(role, Integer.valueOf(next));
@@ -106,7 +112,10 @@ public class UserAdminRepository {
     }
 
     /**
-     * Lay chi tiet user va role theo id.
+     * Loads one user and its assigned roles by id.
+     *
+     * @param id user id
+     * @return user map with roles, or {@code null} when no row exists
      */
     public Map<String, Object> getUser(long id) {
         String sql = "SELECT id, username, fullName, email, status, createdAt, updatedAt FROM [User] WHERE id = ?";
@@ -127,7 +136,13 @@ public class UserAdminRepository {
     }
 
     /**
-     * Tao user active moi sau khi validate thong tin co ban.
+     * Creates a new active user after validating account fields.
+     *
+     * @param username unique username
+     * @param passwordHash password value stored by the current project
+     * @param fullName display name
+     * @param email unique email address
+     * @return generated user id
      */
     public long createUser(String username, String passwordHash, String fullName, String email) {
         validateUserFields(username, passwordHash, fullName, email);
@@ -136,6 +151,7 @@ public class UserAdminRepository {
              PreparedStatement ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             String normalizedUsername = username.trim();
             String normalizedEmail = email.trim();
+            // BR-SYS: usernames and emails must stay unique for account management.
             if (existsByColumn(conn, "username", normalizedUsername)) {
                 throw new IllegalArgumentException("Username already exists");
             }
@@ -160,7 +176,12 @@ public class UserAdminRepository {
     }
 
     /**
-     * Cap nhat ho ten va email cua user.
+     * Updates basic profile fields for an existing user.
+     *
+     * @param id user id
+     * @param fullName new full name
+     * @param email new unique email address
+     * @return nothing; the user row is updated as a side effect
      */
     public void updateUser(long id, String fullName, String email) {
         if (isBlank(fullName) || isBlank(email) || !email.contains("@")) {
@@ -186,13 +207,18 @@ public class UserAdminRepository {
     }
 
     /**
-     * Cap nhat trang thai ACTIVE/INACTIVE cua user.
+     * Updates a user's status.
+     *
+     * @param id user id
+     * @param status requested status, limited to ACTIVE or INACTIVE
+     * @return nothing; the user row is updated as a side effect
      */
     public void updateStatus(long id, String status) {
         String normalized = normalizeStatus(status);
         String sql = "UPDATE [User] SET status = ?, updatedAt = GETDATE() WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            // BR-SYS-01: the system must always keep at least one active ADMIN.
             if ("INACTIVE".equals(normalized)
                     && userHasRole(conn, id, "ADMIN")
                     && countActiveUsersWithRole(conn, "ADMIN") <= 1) {
@@ -209,7 +235,11 @@ public class UserAdminRepository {
     }
 
     /**
-     * Gan role cho user neu role chua ton tai va to hop role hop le.
+     * Assigns a role to a user if the role exists and the final combination is valid.
+     *
+     * @param userId target user id
+     * @param roleName role name to assign
+     * @return nothing; the role assignment is inserted as a side effect
      */
     public void addRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
@@ -221,6 +251,7 @@ public class UserAdminRepository {
             ensureAdminRoleCanBeAssigned(conn, userId, normalizedRole);
             List<String> nextRoles = new ArrayList<String>(listRoles(conn, userId));
             nextRoles.add(normalizedRole);
+            // BR-SYS: only single Mangaka, single Assistant, or Tantou+Board is valid.
             RoleCombinationValidator.validate(nextRoles);
             rolePs.setString(1, normalizedRole);
             long roleId;
@@ -250,13 +281,18 @@ public class UserAdminRepository {
     }
 
     /**
-     * Go role khoi user, bao ve admin cuoi cung.
+     * Removes a role assignment from a user while protecting the last admin.
+     *
+     * @param userId target user id
+     * @param roleName role name to remove
+     * @return nothing; the role assignment is deleted as a side effect
      */
     public void removeRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         String sql = "DELETE ur FROM UserRole ur JOIN [Role] r ON ur.roleId = r.id WHERE ur.userId = ? AND r.name = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            // BR-SYS-01: never allow removing the only ADMIN role.
             if ("ADMIN".equals(normalizedRole)
                     && userHasRole(conn, userId, "ADMIN")
                     && countUsersWithRole(conn, "ADMIN") <= 1) {
@@ -271,7 +307,10 @@ public class UserAdminRepository {
     }
 
     /**
-     * Lay danh sach role hien co cua user.
+     * Lists assigned role names for a user.
+     *
+     * @param userId target user id
+     * @return ordered role names for the user
      */
     public List<String> listRoles(long userId) {
         try (Connection conn = dataSource.getConnection()) {
@@ -282,9 +321,13 @@ public class UserAdminRepository {
     }
 
     /**
-     * Lay thong tin role hien tai cua user kem nhan hien thi.
+     * Lists role switch display items for a user's current roles.
+     *
+     * @param userId target user id
+     * @return role id, role name, and display label rows
      */
     public List<Map<String, Object>> listRoleSwitchItems(long userId) {
+        // ROW_NUMBER gives a stable per-role index for labels such as "Assistant 2".
         String sql =
             "WITH RankedRoles AS ("
             + "SELECT u.id AS userId, r.id AS roleId, r.name AS roleName, "
@@ -316,14 +359,20 @@ public class UserAdminRepository {
     }
 
     /**
-     * Kiem tra he thong da co admin nao chua.
+     * Checks whether the system already has any admin role assignment.
+     *
+     * @return {@code true} when at least one ADMIN role exists
      */
     public boolean hasAnyAdmin() {
         return countUsersWithRole("ADMIN") > 0;
     }
 
     /**
-     * Kiem tra user co role duoc chi dinh hay khong.
+     * Checks whether a user has a specific role.
+     *
+     * @param userId target user id
+     * @param roleName role name to check
+     * @return {@code true} when the user has the role
      */
     public boolean hasRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
@@ -335,7 +384,10 @@ public class UserAdminRepository {
     }
 
     /**
-     * Dem so user dang giu role duoc chi dinh.
+     * Counts users assigned to a specific role.
+     *
+     * @param roleName role name to count
+     * @return number of users assigned to that role
      */
     public int countUsersWithRole(String roleName) {
         String normalizedRole = normalizeRole(roleName);
@@ -364,6 +416,7 @@ public class UserAdminRepository {
         if (!"ADMIN".equals(normalizedRole) || userHasRole(conn, userId, "ADMIN")) {
             return;
         }
+        // BR-SYS-01: the admin role is unique in this system.
         if (countUsersWithRole(conn, "ADMIN") > 0) {
             throw new IllegalArgumentException("Only one ADMIN account is allowed");
         }
@@ -410,6 +463,7 @@ public class UserAdminRepository {
 
     private String normalizeRole(String roleName) {
         String normalized = roleName == null ? "" : roleName.trim().toUpperCase();
+        // BR-SYS role catalog: reject unknown roles before touching UserRole.
         if (!"ADMIN".equals(normalized)
                 && !"MANGAKA".equals(normalized)
                 && !"ASSISTANT".equals(normalized)
@@ -480,9 +534,10 @@ public class UserAdminRepository {
     }
 
     /**
-     * Get user full name by ID.
-     * @param userId the user ID
-     * @return the full name, or null if user not found
+     * Gets a user's full name by id.
+     *
+     * @param userId target user id
+     * @return full name, or {@code null} when the user is not found
      */
     public String getFullNameById(long userId) {
         String sql = "SELECT fullName FROM [User] WHERE id = ?";

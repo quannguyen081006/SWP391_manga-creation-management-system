@@ -94,6 +94,7 @@
         </button>
 
         <div class="side-title">Navigation</div>
+        <%-- BR-SYS role-based UI hiding; AuthInterceptor still enforces access on the server. --%>
         <a class="nav-item nav-dashboard ${fn:contains(uri, '/main/dashboard') ? 'active' : ''}" href="${ctx}/main/dashboard" title="Dashboard">
             <span class="nav-icon" aria-hidden="true"></span>
             <span class="nav-label">Dashboard</span>
@@ -243,7 +244,7 @@
                                 </c:forEach>
                             </c:otherwise>
                         </c:choose>
-                        <%-- Link xem toan bo notification. --%>
+                        <%-- Full notification list link; individual items redirect through stored viewUrl validation. --%>
                         <div class="dropdown-divider"></div>
                         <a href="${ctx}/main/notifications" class="dropdown-item text-center text-primary fw-semibold py-2 notify-see-all">
                             View all notifications
@@ -375,6 +376,7 @@
                                                     menu.innerHTML = '<span style="padding:8px;display:block;color:#c00">Failed to load</span>';
                                                     return;
                                                 }
+                                                // BR-SYS switch menu groups active users by their assigned role names.
                                                 var groups = [
                                                     { role: 'ADMIN', label: 'Admin', users: [] },
                                                     { role: 'MANGAKA', label: 'Mangaka', users: [] },
@@ -427,6 +429,7 @@
 
                                 function hasRole(user, role) {
                                     var roles = user.roles || [];
+                                    // API responses may expose roles as strings or small role objects.
                                     return roles.some(function (item) {
                                         if (typeof item === 'string') {
                                             return item === role;

@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /**
- * Controller advice dua notification summary vao model cho header.
+ * Adds notification summary attributes to every MVC controller model.
+ * The shared header uses these attributes for the unread badge and dropdown.
  */
 @ControllerAdvice(annotations = Controller.class)
 public class NotificationViewAdvice {
@@ -20,7 +21,10 @@ public class NotificationViewAdvice {
     private NotificationRepository notificationRepository;
 
     /**
-     * Cung cap so notification chua doc cho badge tren header.
+     * Provides the unread notification count for the header badge.
+     *
+     * @param session current HTTP session
+     * @return unread count, or {@code 0} when no authenticated user exists
      */
     @ModelAttribute("headerUnreadNotificationCount")
     public int unreadCount(HttpSession session) {
@@ -32,7 +36,10 @@ public class NotificationViewAdvice {
     }
 
     /**
-     * Cung cap danh sach notification cho dropdown tren header.
+     * Provides notifications for the header dropdown.
+     *
+     * @param session current HTTP session
+     * @return notifications for the authenticated user, or an empty list
      */
     @ModelAttribute("headerNotifications")
     public List<NotificationItem> latestNotifications(HttpSession session) {
@@ -48,6 +55,7 @@ public class NotificationViewAdvice {
             return null;
         }
         Object raw = session.getAttribute("AUTH_USER");
+        // Header advice runs on many pages; ignore unexpected session values safely.
         if (!(raw instanceof AuthenticatedUser)) {
             return null;
         }

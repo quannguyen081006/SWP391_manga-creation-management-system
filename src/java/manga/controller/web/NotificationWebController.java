@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.view.RedirectView;
 
 /**
- * Controller xu ly trang notification cua user da dang nhap.
- * Route: /main/notifications.
+ * Handles authenticated notification pages and click-through redirects.
+ * This controller owns the web flow for `/main/notifications`.
  */
 @Controller
 @RequestMapping("/main/notifications")
@@ -23,7 +23,11 @@ public class NotificationWebController {
     private NotificationRepository notificationRepository;
 
     /**
-     * Hien thi danh sach notification va so luong chua doc.
+     * Displays the current user's notification list.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @param model MVC model that receives notifications and unreadCount
+     * @return JSP view name for the notification list
      */
     @RequestMapping(method = RequestMethod.GET)
     public String list(HttpSession session, Model model) {
@@ -34,7 +38,11 @@ public class NotificationWebController {
     }
 
     /**
-     * Danh dau mot notification la da doc tu trang web.
+     * Marks one notification as read from the web page form action.
+     *
+     * @param id notification id
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return redirect back to the notification list
      */
     @RequestMapping(value = "/{id}/read", method = RequestMethod.POST)
     public String markRead(@PathVariable("id") long id, HttpSession session) {
@@ -44,7 +52,11 @@ public class NotificationWebController {
     }
 
     /**
-     * Xu ly click notification: mark read roi redirect toi viewUrl hop le.
+     * Handles clicking a notification by marking it read and redirecting safely.
+     *
+     * @param id notification id
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return redirect to a supported target URL or back to notifications
      */
     @RequestMapping(value = "/{id}/click", method = RequestMethod.GET)
     public RedirectView click(@PathVariable("id") long id, HttpSession session) {
@@ -58,7 +70,10 @@ public class NotificationWebController {
     }
 
     /**
-     * Danh dau tat ca notification cua user hien tai la da doc.
+     * Marks all notifications for the current user as read.
+     *
+     * @param session current HTTP session containing `AUTH_USER`
+     * @return redirect back to the notification list
      */
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST)
     public String markAllRead(HttpSession session) {
@@ -69,6 +84,7 @@ public class NotificationWebController {
 
     private AuthenticatedUser requireUser(HttpSession session) {
         Object auth = session == null ? null : session.getAttribute("AUTH_USER");
+        // Web endpoints depend on the interceptor, but this guard keeps direct calls safe.
         if (!(auth instanceof AuthenticatedUser)) {
             throw new IllegalArgumentException("Unauthorized");
         }
@@ -87,6 +103,7 @@ public class NotificationWebController {
         if (queryIndex >= 0) {
             path = path.substring(0, queryIndex);
         }
+        // Allow only known web routes so stored notification URLs cannot redirect externally.
         return path.matches("/main/notifications")
                 || path.matches("/main/proposals/\\d+")
                 || path.matches("/main/proposals/\\d+/vote")

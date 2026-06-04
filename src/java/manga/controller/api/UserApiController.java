@@ -15,7 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller cho admin quan ly user, status va role.
+ * Exposes admin-only user management APIs for account creation, profile
+ * updates, status changes, and role assignment.
  */
 @RestController
 @RequestMapping("/api/v1/users")
@@ -25,7 +26,10 @@ public class UserApiController {
     private UserAdminRepository userAdminRepository;
 
     /**
-     * Tra ve danh sach user cho admin.
+     * Lists all users for admin management.
+     *
+     * @param session current HTTP session containing an ADMIN user
+     * @return API response containing all users and roles
      */
     @RequestMapping(method = RequestMethod.GET)
     public ApiResponse<List<Map<String, Object>>> list(HttpSession session) {
@@ -34,7 +38,14 @@ public class UserApiController {
     }
 
     /**
-     * Tao user moi qua API admin.
+     * Creates a new user through the admin API.
+     *
+     * @param session current HTTP session containing an ADMIN user
+     * @param username unique username
+     * @param password raw password value used by the current project
+     * @param fullName display name
+     * @param email unique email address
+     * @return API response containing the created user
      */
     @RequestMapping(method = RequestMethod.POST)
     public ApiResponse<Map<String, Object>> create(
@@ -49,7 +60,11 @@ public class UserApiController {
     }
 
     /**
-     * Tra ve chi tiet mot user cho admin.
+     * Returns one user's details for admin management.
+     *
+     * @param id user id
+     * @param session current HTTP session containing an ADMIN user
+     * @return API response containing user details
      */
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ApiResponse<Map<String, Object>> detail(@PathVariable("id") long id, HttpSession session) {
@@ -62,7 +77,13 @@ public class UserApiController {
     }
 
     /**
-     * Cap nhat thong tin co ban cua user qua API.
+     * Updates a user's basic profile fields through the API.
+     *
+     * @param id user id
+     * @param session current HTTP session containing an ADMIN user
+     * @param fullName updated full name
+     * @param email updated email address
+     * @return empty success response
      */
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public ApiResponse<Object> update(
@@ -76,7 +97,12 @@ public class UserApiController {
     }
 
     /**
-     * Cap nhat trang thai ACTIVE/INACTIVE cua user.
+     * Updates a user's ACTIVE/INACTIVE status.
+     *
+     * @param id user id
+     * @param session current HTTP session containing an ADMIN user
+     * @param status requested status value
+     * @return empty success response
      */
     @RequestMapping(value = "/{id}/status", method = RequestMethod.PATCH)
     public ApiResponse<Object> patchStatus(
@@ -85,6 +111,7 @@ public class UserApiController {
             @RequestParam("status") String status) {
         requireAdmin(session);
         String normalized = status == null ? "" : status.trim().toUpperCase();
+        // BR-SYS: only ACTIVE and INACTIVE are valid account states.
         if (!"ACTIVE".equals(normalized) && !"INACTIVE".equals(normalized)) {
             throw new IllegalArgumentException("Status must be ACTIVE or INACTIVE");
         }
@@ -93,7 +120,12 @@ public class UserApiController {
     }
 
     /**
-     * Gan role moi cho user qua API admin.
+     * Assigns a role to a user through the admin API.
+     *
+     * @param id user id
+     * @param session current HTTP session containing an ADMIN user
+     * @param role role name to assign
+     * @return empty success response
      */
     @RequestMapping(value = "/{id}/roles", method = RequestMethod.POST)
     public ApiResponse<Object> addRole(
@@ -107,7 +139,12 @@ public class UserApiController {
     }
 
     /**
-     * Go role khoi user qua API admin.
+     * Removes a role from a user through the admin API.
+     *
+     * @param id user id
+     * @param session current HTTP session containing an ADMIN user
+     * @param role role name to remove
+     * @return empty success response
      */
     @RequestMapping(value = "/{id}/roles", method = RequestMethod.DELETE)
     public ApiResponse<Object> removeRole(

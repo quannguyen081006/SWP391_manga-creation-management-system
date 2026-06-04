@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * Controller xu ly dang nhap, dang xuat va switch user trong moi truong dev.
+ * Handles web authentication pages and session changes for login, logout,
+ * and the development switch-role helper.
  */
 @Controller
 public class AuthController {
@@ -21,7 +22,9 @@ public class AuthController {
     private AuthService authService;
 
     /**
-     * Hien thi form dang nhap.
+     * Displays the login form.
+     *
+     * @return login JSP view name
      */
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String loginPage() {
@@ -29,7 +32,13 @@ public class AuthController {
     }
 
     /**
-     * Xac thuc user va tao session dang nhap.
+     * Authenticates credentials and stores the user in the HTTP session.
+     *
+     * @param username submitted username
+     * @param password submitted password
+     * @param request current request used to create the session
+     * @param model MVC model used to return validation errors
+     * @return dashboard redirect on success, or login view on failure
      */
     @RequestMapping(value = "/login", method = RequestMethod.POST)
     public String login(
@@ -40,6 +49,7 @@ public class AuthController {
         try {
             AuthenticatedUser user = authService.login(username, password);
             HttpSession session = request.getSession(true);
+            // BR-SYS: authenticated state is centralized in the AUTH_USER session key.
             session.setAttribute("AUTH_USER", user);
             return "redirect:/main/dashboard";
         } catch (IllegalArgumentException ex) {
@@ -50,7 +60,12 @@ public class AuthController {
     }
 
     /**
-     * Chuyen nhanh sang user khac cho qua trinh test role.
+     * Switches the session to another active user for role testing.
+     *
+     * @param username username to switch into
+     * @param back optional previous path retained for route compatibility
+     * @param request current request used to create or update the session
+     * @return dashboard redirect after the session user is replaced
      */
     @RequestMapping(value = "/switch-role", method = RequestMethod.GET)
     public String switchRole(
@@ -59,13 +74,17 @@ public class AuthController {
             HttpServletRequest request) {
         AuthenticatedUser switched = authService.switchUserForTesting(username);
         HttpSession session = request.getSession(true);
+        // This helper replaces the full authenticated principal; it does not merge roles.
         session.setAttribute("AUTH_USER", switched);
 
         return "redirect:/main/dashboard";
     }
 
     /**
-     * Huy session hien tai va quay ve trang dang nhap.
+     * Logs out by invalidating the current HTTP session.
+     *
+     * @param request current request containing the optional session
+     * @return redirect to the login page
      */
     @RequestMapping(value = "/logout", method = RequestMethod.GET)
     public String logout(HttpServletRequest request) {
