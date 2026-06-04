@@ -171,21 +171,42 @@
                             </c:when>
                             <c:otherwise>
                                 <c:forEach items="${headerNotifications}" var="n">
-                                    <a href="${ctx}/main/notifications/${n.id}/click"
-                                       class="notify-item noti-item ${n.read ? 'is-read read' : 'is-unread unread'}">
-                                        <div class="notify-item-main">
+                                    <div class="notify-item noti-item ${n.read ? 'is-read read' : 'is-unread unread'}" data-noti-id="${n.id}" style="position:relative;">
+                                        <a href="${ctx}/main/notifications/${n.id}/click" class="notify-item-main text-decoration-none">
                                             <div class="noti-title">${empty n.title ? n.type : n.title}</div>
                                             <div class="noti-message">${n.message}</div>
                                             <div class="noti-time" data-time="${n.createdAt}"></div>
-                                        </div>
+                                        </a>
                                         <c:if test="${!n.read}">
                                             <span class="noti-dot" aria-hidden="true"></span>
                                         </c:if>
-                                    </a>
+                                        <div class="noti-actions ms-2" style="position:relative; z-index:10;">
+                                            <button type="button"
+                                                    class="btn btn-sm p-0 text-muted noti-menu-btn"
+                                                    data-id="${n.id}"
+                                                    data-read="${n.read}"
+                                                    data-menu-id="header-noti-menu-${n.id}"
+                                                    style="background:none; border:none; font-size:16px; line-height:1;"
+                                                    onclick="event.preventDefault(); event.stopPropagation(); toggleNotiMenu(this);">...</button>
+                                            <div class="noti-menu shadow-sm" id="header-noti-menu-${n.id}"
+                                                 style="display:none; position:absolute; right:0; top:24px; background:#fff; border:1px solid #ddd; border-radius:6px; min-width:160px; z-index:999;">
+                                                <button type="button" class="btn btn-sm w-100 text-start px-3 py-2"
+                                                        onclick="event.stopPropagation(); deleteNoti(${n.id})">Delete</button>
+                                                <button type="button" class="btn btn-sm w-100 text-start px-3 py-2"
+                                                        onclick="event.stopPropagation(); toggleReadNoti(${n.id}, ${n.read})">
+                                                    ${n.read ? 'Mark as unread' : 'Mark as read'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </c:forEach>
                             </c:otherwise>
                         </c:choose>
-                        <a class="notify-see-all" href="${ctx}/main/notifications">See all notifications</a>
+                        <%-- Link xem toan bo notification. --%>
+                        <div class="dropdown-divider"></div>
+                        <a href="${ctx}/main/notifications" class="dropdown-item text-center text-primary fw-semibold py-2 notify-see-all">
+                            View all notifications
+                        </a>
                     </div>
                 </details>
 
@@ -293,6 +314,58 @@
                         });
                     }
                 }());
+            </script>
+            <%-- Notification item menu: delete and toggle read state without triggering row redirect. --%>
+            <script>
+                function closeAllNotiMenus() {
+                    document.querySelectorAll('.noti-menu').forEach(function (menu) {
+                        menu.style.display = 'none';
+                    });
+                }
+
+                function toggleNotiMenu(btn) {
+                    var menuId = btn.dataset.menuId || ('noti-menu-' + btn.dataset.id);
+                    var menu = document.getElementById(menuId);
+                    if (!menu) {
+                        return;
+                    }
+                    var isOpen = menu.style.display === 'block';
+                    closeAllNotiMenus();
+                    if (!isOpen) {
+                        menu.style.display = 'block';
+                    }
+                }
+
+                document.addEventListener('click', function () {
+                    closeAllNotiMenus();
+                });
+
+                function deleteNoti(id) {
+                    closeAllNotiMenus();
+                    fetch((window.MANGA_CTX || '') + '/api/v1/notifications/' + id, {
+                        method: 'DELETE',
+                        credentials: 'same-origin'
+                    }).then(function (res) {
+                        if (res.ok) {
+                            document.querySelectorAll('[data-noti-id="' + id + '"]').forEach(function (item) {
+                                item.remove();
+                            });
+                        }
+                    });
+                }
+
+                function toggleReadNoti(id, isRead) {
+                    closeAllNotiMenus();
+                    var url = (window.MANGA_CTX || '') + '/api/v1/notifications/' + id + (isRead ? '/unread' : '/read');
+                    fetch(url, {
+                        method: 'PATCH',
+                        credentials: 'same-origin'
+                    }).then(function (res) {
+                        if (res.ok) {
+                            location.reload();
+                        }
+                    });
+                }
             </script>
             <%-- Notification timestamp script: converts database timestamps to relative time. --%>
             <script>

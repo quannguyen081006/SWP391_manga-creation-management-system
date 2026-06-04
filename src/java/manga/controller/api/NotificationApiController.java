@@ -43,6 +43,26 @@ public class NotificationApiController {
     }
 
     /**
+     * Danh dau mot notification la chua doc qua API.
+     */
+    @RequestMapping(value = "/{id}/unread", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
+    public String markUnread(@PathVariable("id") long id, HttpSession session) {
+        AuthenticatedUser user = SessionUserUtil.requireUser(session);
+        notificationRepository.markUnread(user.getId(), id);
+        return okEmpty("Notification marked as unread");
+    }
+
+    /**
+     * Xoa notification cua user hien tai qua API.
+     */
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = "application/json;charset=UTF-8")
+    public String delete(@PathVariable("id") long id, HttpSession session) {
+        AuthenticatedUser user = SessionUserUtil.requireUser(session);
+        notificationRepository.delete(user.getId(), id);
+        return okEmpty("Notification deleted");
+    }
+
+    /**
      * Danh dau tat ca notification cua user hien tai la da doc qua API.
      */
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")

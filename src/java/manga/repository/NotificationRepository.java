@@ -104,6 +104,22 @@ public class NotificationRepository {
     }
 
     /**
+     * Danh dau notification cua user la chua doc.
+     */
+    public void markUnread(long userId, long id) {
+        String sql = "UPDATE Notification SET isRead = 0 WHERE id = ? AND userId = ?";
+        update(sql, id, userId);
+    }
+
+    /**
+     * Xoa notification neu no thuoc ve user.
+     */
+    public void delete(long userId, long id) {
+        String sql = "DELETE FROM Notification WHERE id = ? AND userId = ?";
+        update(sql, id, userId);
+    }
+
+    /**
      * Danh dau toan bo notification cua user la da doc.
      */
     public void markAllRead(long userId) {
