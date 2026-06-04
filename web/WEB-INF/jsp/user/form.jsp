@@ -11,9 +11,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">${editing ? 'Edit User' : 'Create User'}</h2>
-<p class="page-sub">Admin account management</p>
-
 <%-- Form error from create/update validation. --%>
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 

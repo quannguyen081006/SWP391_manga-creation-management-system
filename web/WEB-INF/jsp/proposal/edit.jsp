@@ -10,9 +10,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">Edit Proposal</h2>
-<p class="page-sub">Update your proposal before Tantou review</p>
-
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 
 <div class="section-card">

@@ -11,11 +11,7 @@
 <jsp:include page="../common/header.jsp" />
 
 <%-- Notification page header: unread count and mark-all action. --%>
-<div class="section-head">
-    <div>
-        <h2 class="page-title">Notifications</h2>
-        <p class="page-sub">${unreadCount} unread notification${unreadCount == 1 ? '' : 's'}</p>
-    </div>
+<div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:20px;">
     <form method="post" action="${pageContext.request.contextPath}/main/notifications/mark-all-read">
         <button class="btn primary" type="submit" ${unreadCount == 0 ? 'disabled' : ''}>Mark all read</button>
     </form>
@@ -31,7 +27,7 @@
         </c:when>
         <c:otherwise>
             <c:forEach items="${notifications}" var="n">
-                <div class="notification-row noti-item ${n.read ? 'is-read read' : 'is-unread unread'}" data-noti-id="${n.id}" style="position:relative;">
+                <div class="notification-row noti-item ${n.read ? 'is-read read' : 'is-unread unread'}" data-noti-id="${n.id}" data-is-read="${n.read}" style="position:relative;">
                     <a href="${pageContext.request.contextPath}/main/notifications/${n.id}/click" class="notification-main text-decoration-none" style="flex:1; min-width:0;">
                         <div class="notification-row-head">
                             <span class="notification-title">${empty n.title ? n.type : n.title}</span>
@@ -53,11 +49,11 @@
                                 data-menu-id="list-noti-menu-${n.id}"
                                 style="background:none; border:none; font-size:16px; line-height:1;"
                                 onclick="event.preventDefault(); event.stopPropagation(); toggleNotiMenu(this);">...</button>
-                        <div class="noti-menu shadow-sm" id="list-noti-menu-${n.id}"
-                             style="display:none; position:absolute; right:0; top:24px; background:#fff; border:1px solid #ddd; border-radius:6px; min-width:160px; z-index:999;">
-                            <button type="button" class="btn btn-sm w-100 text-start px-3 py-2"
+                        <div class="noti-menu" id="list-noti-menu-${n.id}"
+                             style="display:none; position:absolute; right:0; top:24px; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); min-width:160px; z-index:1000; padding:8px 0;">
+                            <button type="button" class="noti-menu-item noti-menu-delete"
                                     onclick="event.stopPropagation(); deleteNoti(${n.id})">Delete</button>
-                            <button type="button" class="btn btn-sm w-100 text-start px-3 py-2"
+                            <button type="button" class="noti-menu-item noti-menu-toggle"
                                     onclick="event.stopPropagation(); toggleReadNoti(${n.id}, ${n.read})">
                                 ${n.read ? 'Mark as unread' : 'Mark as read'}
                             </button>

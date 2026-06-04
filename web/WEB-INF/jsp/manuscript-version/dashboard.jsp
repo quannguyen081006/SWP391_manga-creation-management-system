@@ -108,11 +108,6 @@
     <jsp:include page="/WEB-INF/jsp/common/header.jsp"/>
     
     <div class="dashboard-container">
-        <div class="dashboard-header">
-            <h1>Review Dashboard</h1>
-            <p style="color: #666;">Manuscript version review progress and statistics</p>
-        </div>
-
         <c:if test="${dashboard == null || dashboard.totalPages == null || dashboard.totalPages == 0}">
             <div class="no-changes" style="text-align: center; padding: 60px; color: #666; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <h3>No review data available</h3>

@@ -10,15 +10,11 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">Users</h2>
-<p class="page-sub">Admin user and role management</p>
-
 <%-- User management alerts: success and validation errors from controller actions. --%>
 <c:if test="${not empty success}"><div class="alert success">${success}</div></c:if>
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 <%-- User creation action: opens the admin create-user form. --%>
-<div class="section-head">
-    <div></div>
+<div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:20px;">
     <a class="btn primary" href="${pageContext.request.contextPath}/main/users/new">+ New User</a>
 </div>
 

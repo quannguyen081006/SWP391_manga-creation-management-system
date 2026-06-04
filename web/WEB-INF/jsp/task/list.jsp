@@ -70,9 +70,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">Tasks</h2>
-<p class="page-sub">Manage page tasks for your series</p>
-
 <section class="metric-grid">
     <article class="metric-card"><div id="activeTasks" class="metric-value">0</div><div class="metric-label">Active</div></article>
     <article class="metric-card"><div id="submittedTasks" class="metric-value metric-violet">0</div><div class="metric-label">Submitted</div></article>

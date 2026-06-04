@@ -10,9 +10,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">Task #${task.id}</h2>
-<p class="page-sub">${task.seriesTitle} - Ch. ${task.chapterNumber} ${task.chapterTitle}</p>
-
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 
 <div class="section-card detail-grid">

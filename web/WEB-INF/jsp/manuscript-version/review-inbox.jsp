@@ -170,18 +170,6 @@
     <jsp:include page="/WEB-INF/jsp/common/header.jsp"/>
     
     <div class="inbox-container">
-        <div class="inbox-header">
-            <h1>Manuscript Review Inbox</h1>
-            <p>
-                <c:if test="${isAdmin}">
-                    All manuscripts waiting for review
-                </c:if>
-                <c:if test="${not isAdmin}">
-                    Manuscripts from your assigned series waiting for review
-                </c:if>
-            </p>
-        </div>
-
         <c:if test="${empty underReviewVersions}">
             <div class="empty-state">
                 <h3>No manuscript submissions waiting for review</h3>

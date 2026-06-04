@@ -11,8 +11,6 @@
 <jsp:include page="../common/header.jsp" />
 
 <main class="container narrow">
-    <h1>Create Proposal</h1>
-
     <c:if test="${not empty error}">
         <div class="alert error">${error}</div>
     </c:if>

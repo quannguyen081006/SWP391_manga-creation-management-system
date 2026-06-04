@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller xu ly auth API: login, logout, session check va role switch data.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthApiController {
@@ -25,6 +28,9 @@ public class AuthApiController {
     @Autowired
     private UserAdminRepository userAdminRepository;
 
+    /**
+     * Xac thuc user qua API va luu AUTH_USER vao session.
+     */
     @RequestMapping(value = "/login", method = RequestMethod.POST)
     public ApiResponse<Map<String, Object>> login(
             @RequestParam("username") String username,
@@ -42,12 +48,18 @@ public class AuthApiController {
         return ApiResponse.ok(data, "Login successful");
     }
 
+    /**
+     * Huy session dang nhap hien tai qua API.
+     */
     @RequestMapping(value = "/logout", method = RequestMethod.POST)
     public ApiResponse<Object> logout(HttpSession session) {
         session.invalidate();
         return ApiResponse.ok(null, "Logout successful");
     }
 
+    /**
+     * Tra ve user hien tai va danh sach role dang co trong session.
+     */
     @RequestMapping(value = "/me", method = RequestMethod.GET)
     public ApiResponse<Map<String, Object>> me(HttpSession session) {
         AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("AUTH_USER");
@@ -63,6 +75,9 @@ public class AuthApiController {
         return ApiResponse.ok(data, "Current user");
     }
 
+    /**
+     * Tra ve danh sach role switch item cua user hien tai.
+     */
     @RequestMapping(value = "/roles", method = RequestMethod.GET)
     public ApiResponse<List<Map<String, Object>>> roles(HttpSession session) {
         AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("AUTH_USER");
@@ -72,6 +87,9 @@ public class AuthApiController {
         return ApiResponse.ok(userAdminRepository.listRoleSwitchItems(user.getId()), "Current user roles");
     }
 
+    /**
+     * Tra ve danh sach user active de dropdown switch role trong header su dung.
+     */
     @RequestMapping(value = "/switch-list", method = RequestMethod.GET)
     public ApiResponse<List<Map<String, Object>>> switchList(HttpSession session) {
         AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("AUTH_USER");
@@ -93,6 +111,3 @@ public class AuthApiController {
         return roles;
     }
 }
-
-
-

@@ -202,16 +202,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<div class="ranking-hero">
-    <h1>🏆 Monthly Ranking Results</h1>
-    <div class="period-info">
-        Period: ${period.name} • Status: <span class="status-badge">${period.status}</span>
-    </div>
-    <div style="font-size: 14px; opacity: 0.8;">
-        Calculated at: ${period.calculatedAt}
-    </div>
-</div>
-
 <div class="section-card">
     <h3 class="section-title" style="font-size: 24px; margin-bottom: 24px;">📊 Series Ranking Leaderboard</h3>
     

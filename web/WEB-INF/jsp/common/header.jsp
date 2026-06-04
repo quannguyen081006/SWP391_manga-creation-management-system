@@ -59,6 +59,23 @@
         <c:set var="avatarText" value="${avatarText}X" />
     </c:otherwise>
 </c:choose>
+<%
+    Object forwardedUri = request.getAttribute("javax.servlet.forward.request_uri");
+    String uri = forwardedUri == null ? request.getRequestURI() : forwardedUri.toString();
+    String pageName = "";
+    if (uri.contains("/dashboard")) pageName = "Dashboard";
+    else if (uri.contains("/notifications")) pageName = "Notifications";
+    else if (uri.contains("/proposals")) pageName = "Proposals";
+    else if (uri.contains("/series")) pageName = "Series";
+    else if (uri.contains("/chapters")) pageName = "Chapters";
+    else if (uri.contains("/tasks")) pageName = "Tasks";
+    else if (uri.contains("/manuscript-review") || uri.contains("/manuscripts")) pageName = "Manuscript Reviews";
+    else if (uri.contains("/ranking")) pageName = "Ranking";
+    else if (uri.contains("/decisions")) pageName = "Decisions";
+    else if (uri.contains("/users")) pageName = "Users";
+    else if (uri.contains("/analytics")) pageName = "Analytics";
+    request.setAttribute("_pageName", pageName);
+%>
 
 <%-- App shell sidebar: role-based navigation for authenticated users. --%>
 <div class="app-shell">
@@ -129,7 +146,7 @@
         <header class="top-shell">
             <%-- Top header: dashboard title, active role pills, notifications, and account actions. --%>
             <div class="page-head">
-                <h1>Dashboard</h1>
+                <span style="font-weight:800; color:#111827; font-size:18px; margin-right:12px; line-height:1; letter-spacing:0;"><%= pageName %></span>
                 <c:if test="${sessionScope.AUTH_USER != null && sessionScope.AUTH_USER.hasRole('ADMIN')}">
                     <span class="role-pill role-admin">Admin</span>
                 </c:if>
@@ -147,6 +164,30 @@
                 </c:if>
             </div>
             <div class="top-user">
+                <style>
+                    .noti-actions .noti-menu-item {
+                        display: block;
+                        width: 100%;
+                        padding: 10px 16px;
+                        border: none;
+                        background: #fff;
+                        text-align: left;
+                        font-size: 13px;
+                        line-height: 1.2;
+                    }
+
+                    .noti-actions .noti-menu-item:hover {
+                        background: #f0f2f5;
+                    }
+
+                    .noti-actions .noti-menu-delete {
+                        color: #e74c3c;
+                    }
+
+                    .noti-actions .noti-menu-toggle {
+                        color: #1877f2;
+                    }
+                </style>
                 <%-- Notification dropdown: click item to mark read and redirect through web controller. --%>
                 <details class="notify-switcher">
                     <summary class="notify-toggle" title="Notifications">
@@ -171,7 +212,7 @@
                             </c:when>
                             <c:otherwise>
                                 <c:forEach items="${headerNotifications}" var="n">
-                                    <div class="notify-item noti-item ${n.read ? 'is-read read' : 'is-unread unread'}" data-noti-id="${n.id}" style="position:relative;">
+                                    <div class="notify-item noti-item ${n.read ? 'is-read read' : 'is-unread unread'}" data-noti-id="${n.id}" data-is-read="${n.read}" style="position:relative;">
                                         <a href="${ctx}/main/notifications/${n.id}/click" class="notify-item-main text-decoration-none">
                                             <div class="noti-title">${empty n.title ? n.type : n.title}</div>
                                             <div class="noti-message">${n.message}</div>
@@ -188,11 +229,11 @@
                                                     data-menu-id="header-noti-menu-${n.id}"
                                                     style="background:none; border:none; font-size:16px; line-height:1;"
                                                     onclick="event.preventDefault(); event.stopPropagation(); toggleNotiMenu(this);">...</button>
-                                            <div class="noti-menu shadow-sm" id="header-noti-menu-${n.id}"
-                                                 style="display:none; position:absolute; right:0; top:24px; background:#fff; border:1px solid #ddd; border-radius:6px; min-width:160px; z-index:999;">
-                                                <button type="button" class="btn btn-sm w-100 text-start px-3 py-2"
+                                            <div class="noti-menu" id="header-noti-menu-${n.id}"
+                                                 style="display:none; position:absolute; right:0; top:24px; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); min-width:160px; z-index:999; padding:8px 0;">
+                                                <button type="button" class="noti-menu-item noti-menu-delete"
                                                         onclick="event.stopPropagation(); deleteNoti(${n.id})">Delete</button>
-                                                <button type="button" class="btn btn-sm w-100 text-start px-3 py-2"
+                                                <button type="button" class="noti-menu-item noti-menu-toggle"
                                                         onclick="event.stopPropagation(); toggleReadNoti(${n.id}, ${n.read})">
                                                     ${n.read ? 'Mark as unread' : 'Mark as read'}
                                                 </button>
@@ -329,6 +370,16 @@
                     if (!menu) {
                         return;
                     }
+                    var item = btn.closest('.noti-item');
+                    var isRead = item ? item.dataset.isRead === 'true' : btn.dataset.read === 'true';
+                    var toggleButton = menu.querySelector('.noti-menu-toggle');
+                    if (toggleButton) {
+                        toggleButton.textContent = isRead ? 'Mark as unread' : 'Mark as read';
+                        toggleButton.onclick = function (event) {
+                            event.stopPropagation();
+                            toggleReadNoti(btn.dataset.id, isRead);
+                        };
+                    }
                     var isOpen = menu.style.display === 'block';
                     closeAllNotiMenus();
                     if (!isOpen) {
@@ -356,7 +407,8 @@
 
                 function toggleReadNoti(id, isRead) {
                     closeAllNotiMenus();
-                    var url = (window.MANGA_CTX || '') + '/api/v1/notifications/' + id + (isRead ? '/unread' : '/read');
+                    var currentlyRead = isRead === true || isRead === 'true';
+                    var url = (window.MANGA_CTX || '') + '/api/v1/notifications/' + id + (currentlyRead ? '/unread' : '/read');
                     fetch(url, {
                         method: 'PATCH',
                         credentials: 'same-origin'

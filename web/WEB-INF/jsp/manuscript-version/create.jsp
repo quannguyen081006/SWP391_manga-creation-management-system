@@ -90,8 +90,6 @@
     <jsp:include page="/WEB-INF/jsp/common/header.jsp"/>
     
     <div class="create-container">
-        <h2>Create Manuscript Workspace</h2>
-        
         <c:if test="${error != null}">
             <div class="error-message">${error}</div>
         </c:if>

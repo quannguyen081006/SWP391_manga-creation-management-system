@@ -181,16 +181,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<div class="prestige-hero">
-    <h1>👑 Mangaka Prestige Ranking</h1>
-    <div class="period-info">
-        Period: ${period.name} • Status: <span class="status-badge">${period.status}</span>
-    </div>
-    <div style="font-size: 14px; opacity: 0.8;">
-        Read-only snapshot • Calculated at: ${period.calculatedAt}
-    </div>
-</div>
-
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 
 <div class="section-card">

@@ -11,20 +11,15 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<div class="section-head">
-    <div>
-        <h2 class="page-title">Proposals</h2>
-        <p class="page-sub">Manage manga proposals and Tantou review</p>
-    </div>
-    <c:if test="${isMangaka}">
+<c:if test="${isMangaka}">
+    <div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:20px;">
         <a class="btn primary" href="${pageContext.request.contextPath}/main/proposals/create">+ New Proposal</a>
-    </c:if>
-</div>
+    </div>
+</c:if>
 
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 
 <div class="section-card">
-    <h3 class="section-title">Proposals</h3>
     <table class="data-table">
         <thead>
             <tr>

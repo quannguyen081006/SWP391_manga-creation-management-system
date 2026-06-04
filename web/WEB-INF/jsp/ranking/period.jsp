@@ -238,11 +238,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<div class="dashboard-hero">
-    <h1>📊 Monthly Ranking Dashboard</h1>
-    <div class="subtitle">Manage ranking cycles, monitor performance, and drive editorial decisions</div>
-</div>
-
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 <c:if test="${not empty success}"><div class="alert success">${success}</div></c:if>
 

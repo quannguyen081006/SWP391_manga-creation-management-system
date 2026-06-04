@@ -10,9 +10,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">Dashboard</h2>
-<p class="page-sub">Track your production lifecycle overview</p>
-
 <section class="manga-dashboard-strip" aria-hidden="true">
     <div class="strip-panel strip-panel-focus">
         <span class="speed-line speed-line-a"></span>

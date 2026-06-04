@@ -133,11 +133,6 @@
     <jsp:include page="/WEB-INF/jsp/common/header.jsp"/>
     
     <div class="compare-container">
-        <div class="compare-header">
-            <h2>Version Comparison</h2>
-            <p style="color: #666;">Compare two manuscript versions to see changes</p>
-        </div>
-
         <div class="versions-grid">
             <div class="version-panel version1">
                 <div class="version-title">Version ${comparison.version1.version}</div>

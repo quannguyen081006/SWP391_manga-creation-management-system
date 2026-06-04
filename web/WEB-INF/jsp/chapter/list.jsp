@@ -28,12 +28,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<header class="chapter-page-intro">
-    <h2 class="page-title">Chapters</h2>
-    <p class="page-sub">Track each chapter and current chapter progress</p>
-    <p id="chapterFilterSubtitle" class="section-desc" style="display:none;"></p>
-</header>
-
 <div id="chapterResult" class="alert error" style="display:none;"></div>
 
 <div id="chapterLayoutGrid" style="display:grid;grid-template-columns:1fr;gap:20px;align-items:start;margin-top:4px;">

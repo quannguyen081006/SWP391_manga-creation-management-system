@@ -129,11 +129,6 @@
     <jsp:include page="/WEB-INF/jsp/common/header.jsp"/>
     
     <div class="history-container">
-        <div class="chapter-header">
-            <h2>Version History</h2>
-            <p style="color: #666;">Chapter ${chapter.chapterNumber}: ${chapter.title}</p>
-        </div>
-
         <c:if test="${empty versions}">
             <div class="empty-state">
                 <h3>No manuscript versions found</h3>

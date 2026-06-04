@@ -7,8 +7,15 @@ import manga.model.AuthenticatedUser;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
+/**
+ * Interceptor bao ve route can dang nhap va ap dung RBAC theo URL.
+ */
 public class AuthInterceptor implements HandlerInterceptor {
 
+    /**
+     * Kiem tra session, cache header va quyen truy cap truoc khi vao controller.
+     */
+    @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String uri = request.getRequestURI();
         String context = request.getContextPath();
@@ -98,13 +105,17 @@ public class AuthInterceptor implements HandlerInterceptor {
         return true;
     }
 
+    /**
+     * Khong xu ly them sau controller.
+     */
+    @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) {
-        // no-op
     }
 
+    /**
+     * Khong xu ly them sau khi request hoan tat.
+     */
+    @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        // no-op
     }
 }
-
-

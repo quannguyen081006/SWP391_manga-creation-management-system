@@ -11,8 +11,6 @@
 <body>
 <jsp:include page="../common/header.jsp" />
 
-<h2 class="page-title">Series</h2>
-<p class="page-sub">Manage your manga series and chapters</p>
 <div id="seriesMessage" class="alert" style="display:none;"></div>
 
 <div class="list-cards">

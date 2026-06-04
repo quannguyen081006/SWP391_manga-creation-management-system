@@ -4,12 +4,18 @@ import manga.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service tao notification va kiem tra duplicate notification theo type/reference.
+ */
 @Service
 public class NotificationService {
 
     @Autowired
     private NotificationRepository notificationRepository;
 
+    /**
+     * Tao notification cho user voi type/message va thong tin reference.
+     */
     public void notifyUser(long userId, String type, String message, long referenceId, String referenceType) {
         if (userId <= 0) {
             throw new IllegalArgumentException("Notification target user is required");
