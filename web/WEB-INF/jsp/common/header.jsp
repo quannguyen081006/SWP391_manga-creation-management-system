@@ -83,7 +83,7 @@
         <a class="side-brand" href="${ctx}/main/dashboard" title="Back to Dashboard">
             <div class="brand-icon">MF</div>
             <div>
-                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v1.9</span></div>
+                <div class="brand-name">MangaFlow <span style="font-size:10px; color:#aaa; margin-left:6px;">v2.0</span></div>
                 <div class="brand-sub">Manga Studio Ops</div>
             </div>
         </a>
@@ -123,7 +123,7 @@
                 <span class="nav-label">Decisions</span>
             </a>
         </c:if>
-        <c:if test="${isAdmin || isTantou}">
+        <c:if test="${isTantou}">
             <a class="nav-item nav-manuscript-review ${fn:contains(uri, '/main/manuscript-review') ? 'active' : ''}" href="${ctx}/main/manuscript-review" title="Manuscript Reviews">
                 <span class="nav-icon" aria-hidden="true"></span>
                 <span class="nav-label">Manuscript Reviews</span>

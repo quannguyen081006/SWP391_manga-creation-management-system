@@ -733,7 +733,7 @@
                 marker.style.height = '${ann.getHeightPercent()}%';
                 marker.title = '${ann.category}: ${ann.content}';
                         marker.onclick = function () {
-                            alert('${ann.category}: ${ann.content}\nStatus: ${ann.status}\nSeverity: ${ann.severity}');
+                            alert('Category: ${ann.category}\nContent: ${ann.content}\nStatus: ${ann.status}\nSeverity: ${ann.severity}');
                                     };
                                     container.appendChild(marker);
                                 }
