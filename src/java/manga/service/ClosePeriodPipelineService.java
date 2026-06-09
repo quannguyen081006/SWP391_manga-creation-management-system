@@ -36,9 +36,6 @@ public class ClosePeriodPipelineService {
     @Autowired
     private DataSource dataSource;
 
-    @Autowired
-    private AuditLogRepository auditLogRepository;
-
     @Transactional
     public void executePipeline(long periodId, AuthenticatedUser user) {
         // ADMIN only
@@ -78,46 +75,11 @@ public class ClosePeriodPipelineService {
         phase5FinalizePeriod(periodId, user, period.get("name").toString());
     }
 
-    // BR-RNK-10: Execute pipeline without user check for scheduler use
-    @Transactional
-    public void executePipelineAsSystem(long periodId) {
-        // Lock & Validate period is OPEN
-        Map<String, Object> period = rankingRepository.findPeriodById(periodId);
-        if (period == null) {
-            throw new BusinessRuleException("Ranking period not found");
-        }
-        String status = (String) period.get("status");
-        if (!"OPEN".equalsIgnoreCase(status)) {
-            throw new BusinessRuleException("Only OPEN period can be closed and calculated");
-        }
-
-        // Validate that there is at least one VoteEntry for this period
-        List<Map<String, Object>> entries = rankingRepository.listEntries(periodId);
-        if (entries == null || entries.isEmpty()) {
-            throw new BusinessRuleException("Cannot close period: At least one vote entry is required");
-        }
-
-        // PHASE 1: Lock period (separate transaction)
-        phase1LockPeriod(periodId, null);
-
-        // PHASE 2: Series Ranking (separate transaction)
-        phase2CalculateSeriesRanking(periodId, null);
-
-        // PHASE 3: Mangaka Ranking (separate transaction)
-        phase3CalculateMangakaRanking(periodId, null);
-
-        // PHASE 4: Decision Engine (separate transaction)
-        phase4RunDecisionEngine(periodId, null);
-
-        // PHASE 5: Finalize period (separate transaction)
-        phase5FinalizePeriod(periodId, null, period.get("name").toString());
-    }
-
     @Transactional
     void phase1LockPeriod(long periodId, AuthenticatedUser user) {
-        try (Connection conn = dataSource.getConnection()) {
+        try ( Connection conn = dataSource.getConnection()) {
             String closeSql = "UPDATE RankingPeriod SET status = 'CLOSED' WHERE id = ? AND status = 'OPEN'";
-            try (PreparedStatement ps = conn.prepareStatement(closeSql)) {
+            try ( PreparedStatement ps = conn.prepareStatement(closeSql)) {
                 ps.setLong(1, periodId);
                 if (ps.executeUpdate() == 0) {
                     throw new BusinessRuleException("Failed to close ranking period: status was modified");
@@ -130,7 +92,7 @@ public class ClosePeriodPipelineService {
 
     @Transactional
     void phase2CalculateSeriesRanking(long periodId, AuthenticatedUser user) {
-        try (Connection conn = dataSource.getConnection()) {
+        try ( Connection conn = dataSource.getConnection()) {
             calculateSeriesRanking(conn, periodId);
         } catch (SQLException ex) {
             throw new RuntimeException("Database error in phase 2: series ranking", ex);
@@ -139,7 +101,7 @@ public class ClosePeriodPipelineService {
 
     @Transactional
     void phase3CalculateMangakaRanking(long periodId, AuthenticatedUser user) {
-        try (Connection conn = dataSource.getConnection()) {
+        try ( Connection conn = dataSource.getConnection()) {
             calculateMangakaRanking(conn, periodId);
         } catch (SQLException ex) {
             throw new RuntimeException("Database error in phase 3: mangaka ranking", ex);
@@ -148,7 +110,7 @@ public class ClosePeriodPipelineService {
 
     @Transactional
     void phase4RunDecisionEngine(long periodId, AuthenticatedUser user) {
-        try (Connection conn = dataSource.getConnection()) {
+        try ( Connection conn = dataSource.getConnection()) {
             runDecisionEngine(conn, periodId, user);
         } catch (SQLException ex) {
             throw new RuntimeException("Database error in phase 4: decision engine", ex);
@@ -157,18 +119,12 @@ public class ClosePeriodPipelineService {
 
     @Transactional
     void phase5FinalizePeriod(long periodId, AuthenticatedUser user, String periodName) {
-        try (Connection conn = dataSource.getConnection()) {
+        try ( Connection conn = dataSource.getConnection()) {
             String calculatedSql = "UPDATE RankingPeriod SET status = 'CALCULATED', calculatedAt = GETDATE() WHERE id = ?";
-            try (PreparedStatement ps = conn.prepareStatement(calculatedSql)) {
+            try ( PreparedStatement ps = conn.prepareStatement(calculatedSql)) {
                 ps.setLong(1, periodId);
                 ps.executeUpdate();
             }
-            // BR-RNK-09: Audit log for ranking calculated and archived
-            Long actorId = (user != null) ? user.getId() : null;
-            auditLogRepository.insertLog(actorId, "RANKING_CALCULATED", "RANKING_PERIOD", periodId, 
-                "Ranking period " + periodId + " calculation completed");
-            auditLogRepository.insertLog(actorId, "RANKING_RESULT_ARCHIVED", "RANKING_PERIOD", periodId, 
-                "Ranking period " + periodId + " result archived");
         } catch (SQLException ex) {
             throw new RuntimeException("Database error in phase 5: finalize period", ex);
         }
@@ -182,7 +138,7 @@ public class ClosePeriodPipelineService {
                 + "   CAST(("
                 + "     SUM(CAST(ve.voteCount AS DECIMAL(18,6)))"
                 + "     / NULLIF(SUM(CAST(ve.readerCount AS DECIMAL(18,6))), 0)"
-                + "   ) * 100) AS DECIMAL(6,2) rankScore"
+                + "   ) * 100 AS DECIMAL(6,2)) AS rankScore"
                 + " FROM VoteEntry ve"
                 + " WHERE ve.periodId = ?"
                 + "   AND ve.voteCount >= 0"
@@ -191,17 +147,13 @@ public class ClosePeriodPipelineService {
                 + " GROUP BY ve.seriesId"
                 + "), ranked AS ("
                 + " SELECT"
-                + "   a.seriesId,"
-                + "   a.totalLikes,"
-                + "   a.totalReads,"
-                + "   a.rankScore,"
-                + "   s.publicationDate,"
-                + "   ROW_NUMBER() OVER (ORDER BY a.rankScore DESC, a.totalLikes DESC,"
-                + "     CASE WHEN s.publicationDate IS NULL THEN 1 ELSE 0 END ASC,"
-                + "     s.publicationDate ASC, a.seriesId ASC) AS rankPosition,"
+                + "   seriesId,"
+                + "   totalLikes,"
+                + "   totalReads,"
+                + "   rankScore,"
+                + "   ROW_NUMBER() OVER (ORDER BY rankScore DESC, seriesId ASC) AS rankPosition,"
                 + "   COUNT(*) OVER () AS totalRows"
-                + " FROM agg a"
-                + " JOIN Series s ON s.id = a.seriesId"
+                + " FROM agg"
                 + ")"
                 + " INSERT INTO RankingRecord ("
                 + "   periodId,"
@@ -228,7 +180,7 @@ public class ClosePeriodPipelineService {
                 + "   GETDATE()"
                 + " FROM ranked r";
 
-        try (PreparedStatement ps = conn.prepareStatement(insertRankingSql)) {
+        try ( PreparedStatement ps = conn.prepareStatement(insertRankingSql)) {
             ps.setLong(1, periodId);
             ps.setLong(2, periodId);
             ps.executeUpdate();
@@ -266,7 +218,7 @@ public class ClosePeriodPipelineService {
                 + "  GETDATE()"
                 + "FROM mangaka_ranked mr";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try ( PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, periodId);
             ps.setLong(2, periodId);
             ps.executeUpdate();
@@ -275,19 +227,19 @@ public class ClosePeriodPipelineService {
 
     private void runDecisionEngine(Connection conn, long periodId, AuthenticatedUser user) throws SQLException {
         // Batch fetch all bottom 20% series with their status and session existence check
-        String fetchBottomSeriesDataSql = 
-            "SELECT rr.id AS rankingRecordId, rr.seriesId, s.status AS seriesStatus, " +
-            "   (SELECT COUNT(1) FROM DecisionSession ds WHERE ds.seriesId = rr.seriesId AND ds.status = 'OPEN') AS hasOpenSession " +
-            "FROM RankingRecord rr " +
-            "JOIN Series s ON s.id = rr.seriesId " +
-            "WHERE rr.periodId = ? AND rr.isBottomTwenty = 1";
+        String fetchBottomSeriesDataSql
+                = "SELECT rr.id AS rankingRecordId, rr.seriesId, s.status AS seriesStatus, "
+                + "   (SELECT COUNT(1) FROM DecisionSession ds WHERE ds.seriesId = rr.seriesId AND ds.status = 'OPEN') AS hasOpenSession "
+                + "FROM RankingRecord rr "
+                + "JOIN Series s ON s.id = rr.seriesId "
+                + "WHERE rr.periodId = ? AND rr.isBottomTwenty = 1";
 
         List<Long> rankingRecordIds = new ArrayList<>();
         List<Long> seriesIds = new ArrayList<>();
 
-        try (PreparedStatement ps = conn.prepareStatement(fetchBottomSeriesDataSql)) {
+        try ( PreparedStatement ps = conn.prepareStatement(fetchBottomSeriesDataSql)) {
             ps.setLong(1, periodId);
-            try (ResultSet rs = ps.executeQuery()) {
+            try ( ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     long rankingRecordId = rs.getLong("rankingRecordId");
                     long seriesId = rs.getLong("seriesId");
@@ -309,9 +261,9 @@ public class ClosePeriodPipelineService {
         if (seriesIds.isEmpty()) {
             // Check if any RankingRecord exists for this period
             String checkSql = "SELECT COUNT(*) FROM RankingRecord WHERE periodId = ?";
-            try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+            try ( PreparedStatement ps = conn.prepareStatement(checkSql)) {
                 ps.setLong(1, periodId);
-                try (ResultSet rs = ps.executeQuery()) {
+                try ( ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         int totalRecords = rs.getInt(1);
                         // Log: No bottom 20% series found. Total RankingRecord count: totalRecords
@@ -323,21 +275,22 @@ public class ClosePeriodPipelineService {
 
         // Log number of series to process
         // Log: Processing seriesIds.size() bottom 20% series for decision sessions
-
         // Build IN clause for series IDs
         StringBuilder inClause = new StringBuilder();
         for (int i = 0; i < seriesIds.size(); i++) {
-            if (i > 0) inClause.append(",");
+            if (i > 0) {
+                inClause.append(",");
+            }
             inClause.append("?");
         }
 
-        String fetchAllRevenueHistorySql = 
-            "SELECT ve.seriesId, rp.id AS periodId, rp.name AS periodName, SUM(ve.revenue) AS totalRevenue " +
-            "FROM VoteEntry ve " +
-            "JOIN RankingPeriod rp ON rp.id = ve.periodId " +
-            "WHERE ve.seriesId IN (" + inClause.toString() + ") AND (rp.status = 'CALCULATED' OR rp.id = ?) " +
-            "GROUP BY ve.seriesId, rp.id, rp.name, rp.endDate " +
-            "ORDER BY rp.endDate DESC";
+        String fetchAllRevenueHistorySql
+                = "SELECT ve.seriesId, rp.id AS periodId, rp.name AS periodName, SUM(ve.revenue) AS totalRevenue "
+                + "FROM VoteEntry ve "
+                + "JOIN RankingPeriod rp ON rp.id = ve.periodId "
+                + "WHERE ve.seriesId IN (" + inClause.toString() + ") AND (rp.status = 'CALCULATED' OR rp.id = ?) "
+                + "GROUP BY ve.seriesId, rp.id, rp.name, rp.endDate "
+                + "ORDER BY rp.endDate DESC";
 
         // Map seriesId -> list of revenue data points
         Map<Long, List<RevenueDataPoint>> revenueHistoryMap = new HashMap<>();
@@ -345,20 +298,20 @@ public class ClosePeriodPipelineService {
             revenueHistoryMap.put(seriesId, new ArrayList<RevenueDataPoint>());
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(fetchAllRevenueHistorySql)) {
+        try ( PreparedStatement ps = conn.prepareStatement(fetchAllRevenueHistorySql)) {
             int paramIndex = 1;
             for (long seriesId : seriesIds) {
                 ps.setLong(paramIndex++, seriesId);
             }
             ps.setLong(paramIndex, periodId);
 
-            try (ResultSet rs = ps.executeQuery()) {
+            try ( ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     long seriesId = rs.getLong("seriesId");
                     revenueHistoryMap.get(seriesId).add(new RevenueDataPoint(
-                        rs.getLong("periodId"),
-                        rs.getString("periodName"),
-                        rs.getBigDecimal("totalRevenue")
+                            rs.getLong("periodId"),
+                            rs.getString("periodName"),
+                            rs.getBigDecimal("totalRevenue")
                     ));
                 }
             }
@@ -377,23 +330,26 @@ public class ClosePeriodPipelineService {
             // Serialize revenue trend to JSON for snapshot storage (manual serialization)
             StringBuilder jsonBuilder = new StringBuilder("[");
             for (int j = 0; j < revenueTrend.size(); j++) {
-                if (j > 0) jsonBuilder.append(",");
+                if (j > 0) {
+                    jsonBuilder.append(",");
+                }
                 RevenueDataPoint point = revenueTrend.get(j);
                 jsonBuilder.append("{\"periodId\":").append(point.getPeriodId())
-                           .append(",\"periodName\":\"").append(escapeJson(point.getPeriodName())).append("\"")
-                           .append(",\"revenue\":").append(point.getRevenue()).append("}");
+                        .append(",\"periodName\":\"").append(escapeJson(point.getPeriodName())).append("\"")
+                        .append(",\"revenue\":").append(point.getRevenue()).append("}");
             }
             jsonBuilder.append("]");
             String revenueTrendJson = jsonBuilder.toString();
 
             // Create DecisionSession with revenue trend snapshot
-            Long actorId = (user != null) ? user.getId() : null;
-            decisionRepository.createSession(seriesId, rankingRecordId, suggestion, revenueTrendJson, actorId);
+            decisionRepository.createSession(seriesId, rankingRecordId, suggestion, revenueTrendJson);
         }
     }
 
     private String escapeJson(String value) {
-        if (value == null) return "";
+        if (value == null) {
+            return "";
+        }
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 

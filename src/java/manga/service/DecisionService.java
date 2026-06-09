@@ -72,15 +72,13 @@ public class DecisionService {
 
         // Validate ranking record exists and is bottom 20%
         // Note: In real implementation, would check if this specific ranking record is for this series and isBottomTwenty
-
         // Validate no duplicate active session (BR-66)
         // Note: This check would be implemented in repository
-
         // Create session (repository handles creation)
         // Note: systemSuggestion is null here since this is manual session creation
         // The pipeline auto-generates suggestions for bottom 20% series
         // revenueTrendSnapshot is null for manual sessions
-        long sessionId = decisionRepository.createSession(request.getSeriesId(), request.getRankingRecordId(), null, null, user.getId());
+        long sessionId = decisionRepository.createSession(request.getSeriesId(), request.getRankingRecordId(), null, null);
 
         return sessionId;
     }
@@ -94,9 +92,9 @@ public class DecisionService {
 
         // Validate decision value
         String normalized = request.getDecision() == null ? "" : request.getDecision().trim().toUpperCase();
-        if (!DecisionResult.CONTINUE.name().equals(normalized) 
-            && !DecisionResult.CANCEL.name().equals(normalized) 
-            && !DecisionResult.CHANGE_TYPE.name().equals(normalized)) {
+        if (!DecisionResult.CONTINUE.name().equals(normalized)
+                && !DecisionResult.CANCEL.name().equals(normalized)
+                && !DecisionResult.CHANGE_TYPE.name().equals(normalized)) {
             throw new BusinessRuleException("decision must be CONTINUE, CANCEL, or CHANGE_TYPE");
         }
 
@@ -108,9 +106,37 @@ public class DecisionService {
         }
 
         // Submit vote (repository handles BR-60, BR-61, BR-64, BR-62, BR-69)
-        decisionRepository.castVote(sessionId, user.getId(), normalized, 
-            request.getJustification() == null ? null : request.getJustification().trim());
+        decisionRepository.castVote(sessionId, user.getId(), normalized,
+                request.getJustification() == null ? null : request.getJustification().trim());
     }
 
-    // finalizeDecision removed - quorum-based finalization in resolveIfQuorum handles this automatically
+    public void finalizeDecision(long sessionId, AuthenticatedUser user) {
+        // ADMIN only
+        if (!user.hasRole("ADMIN")) {
+            throw new BusinessRuleException("Only ADMIN can finalize decision");
+        }
+
+        // Validate session exists and is OPEN
+        Map<String, Object> session = decisionRepository.getSessionDetail(sessionId);
+        String status = (String) session.get("status");
+        if (!DecisionSessionStatus.OPEN.name().equals(status)) {
+            throw new BusinessRuleException("Only OPEN session can be finalized");
+        }
+
+        // Validate quorum >= 3 (BR-62)
+        Object votesObj = session.get("votes");
+        int totalVotes = 0;
+        if (votesObj instanceof List) {
+            List<?> votes = (List<?>) votesObj;
+            totalVotes = votes.size();
+        }
+        if (totalVotes < 3) {
+            throw new BusinessRuleException("Cannot finalize without quorum (minimum 3 valid votes) (BR-62)");
+        }
+
+        // Finalize (repository handles aggregation, majority result, series cancellation)
+        decisionRepository.finalizeSession(sessionId);
+
+        // Notification is handled within repository's transaction
+    }
 }
