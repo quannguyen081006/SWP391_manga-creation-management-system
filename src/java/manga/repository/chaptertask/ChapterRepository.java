@@ -475,30 +475,54 @@ public class ChapterRepository {
 
         String statusSql = "SELECT status FROM Chapter WHERE id = ?";
         String taskCountSql = "SELECT COUNT(1) FROM PageTask WHERE chapterId = ?";
+        String deletePagesSql = "DELETE FROM [dbo].[Page] WHERE chapterId = ?";
         String deleteSql = "DELETE FROM Chapter WHERE id = ?";
 
         try (Connection conn = dataSource.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(statusSql)) {
-                ps.setLong(1, chapterId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) throw new IllegalArgumentException("Chapter not found");
-                    if (!"PLANNING".equalsIgnoreCase(rs.getString("status"))) {
-                        throw new IllegalArgumentException("Only PLANNING chapters can be deleted");
+            boolean oldAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(statusSql)) {
+                    ps.setLong(1, chapterId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw new IllegalArgumentException("Chapter not found");
+                        }
+                        if (!"PLANNING".equalsIgnoreCase(rs.getString("status"))) {
+                            throw new IllegalArgumentException("Only PLANNING chapters can be deleted");
+                        }
                     }
                 }
-            }
-            try (PreparedStatement ps = conn.prepareStatement(taskCountSql)) {
-                ps.setLong(1, chapterId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    rs.next();
-                    if (rs.getInt(1) > 0) {
-                        throw new IllegalArgumentException("Cannot delete chapter with existing tasks");
+                try (PreparedStatement ps = conn.prepareStatement(taskCountSql)) {
+                    ps.setLong(1, chapterId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        rs.next();
+                        if (rs.getInt(1) > 0) {
+                            throw new IllegalArgumentException("Cannot delete chapter with existing tasks");
+                        }
                     }
                 }
-            }
-            try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
-                ps.setLong(1, chapterId);
-                if (ps.executeUpdate() == 0) throw new IllegalArgumentException("Chapter not found");
+                if (isPageSchemaReady()) {
+                    try (PreparedStatement ps = conn.prepareStatement(deletePagesSql)) {
+                        ps.setLong(1, chapterId);
+                        ps.executeUpdate();
+                    }
+                }
+                try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+                    ps.setLong(1, chapterId);
+                    if (ps.executeUpdate() == 0) {
+                        throw new IllegalArgumentException("Chapter not found");
+                    }
+                }
+                conn.commit();
+            } catch (RuntimeException ex) {
+                try { conn.rollback(); } catch (SQLException ignore) {}
+                throw ex;
+            } catch (SQLException ex) {
+                try { conn.rollback(); } catch (SQLException ignore) {}
+                throw new RuntimeException("Cannot delete chapter", ex);
+            } finally {
+                conn.setAutoCommit(oldAutoCommit);
             }
         } catch (SQLException ex) {
             throw new RuntimeException("Cannot delete chapter", ex);
