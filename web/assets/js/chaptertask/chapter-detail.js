@@ -20,7 +20,8 @@
  *                      toggleSelectedPage, countUploaded, pageStageScore, pageCompletionPercent,
  *                      countFullyCompletePages, slotStateClass
  * 12. RENDER — renderSelectionBar, renderAssignChips, nextTaskTypeForPages, groupConsecutivePages,
- *              setDefaultAssignTaskType, renderPageGrid, renderPageProgress, renderSidebarTasks, renderMeta
+ *              setDefaultAssignTaskType, renderPageGrid, renderPageProgress, renderSidebarTasks,
+ *              updateManuscriptWorkspaceButton, renderMeta
  * 13. TASK HELPERS — findTask, findTaskByPageNumber, isTaskOverdue, formatDueDateCell, renderTaskRowActions, renderChapterTasks
  * 14. TASK INLINE / COMPARE — loadTaskInlinePages, openPageCompare
  * 15. MODAL / POPOVER — switchTab, openModal, closeModals, closePopovers, openPopover,
@@ -803,9 +804,71 @@
     }
 
     /**
+     * Cập nhật nút btnManuscriptWorkspace dựa trên trạng thái workspace thực tế từ API.
+     * Gọi API /api/v1/manuscript-versions/workspace?chapterId=... để lấy trạng thái,
+     * sau đó hiển thị label và href phù hợp theo từng case:
+     *   - workspaceExists=false              → "📝 Create Workspace"      → /create
+     *   - status=DRAFT                       → "✏️ Continue Manuscript"   → /workspace/:id
+     *   - status=SUBMITTED_FOR_REVIEW        → "📤 View Submitted..."     → /workspace/:id
+     *   - status=UNDER_REVIEW                → "👀 View Under Review..."  → /workspace/:id
+     *   - status=APPROVED                    → "✅ View Approved..."      → /workspace/:id
+     *   - status=REJECTED                    → "🔄 Create New Version"    → /new-version
+     *   - Lỗi API                            → ẩn nút
+     */
+    async function updateManuscriptWorkspaceButton() {
+        if (!chapter) { return; }
+
+        var btnManuscriptWorkspace = document.getElementById('btnManuscriptWorkspace');
+        if (!btnManuscriptWorkspace) { return; }
+
+        try {
+            var response = await callApi('GET', '/api/v1/manuscript-versions/workspace?chapterId=' + chapter.id);
+            var workspace = response.data;
+
+            if (!workspace.workspaceExists) {
+                // Case 1: Chưa có manuscript version nào → tạo mới
+                btnManuscriptWorkspace.style.display = '';
+                btnManuscriptWorkspace.textContent = '📝 Create Workspace';
+                btnManuscriptWorkspace.href = ctx + '/main/chapters/' + chapter.id + '/manuscript-workspace/create';
+            } else {
+                // Case 2–6: Workspace đã tồn tại → xác định label theo status
+                var status = String(workspace.status || '').toUpperCase();
+                var workspaceId = workspace.workspaceId;
+
+                btnManuscriptWorkspace.style.display = '';
+
+                if (status === 'DRAFT') {
+                    btnManuscriptWorkspace.textContent = '✏️ Continue Manuscript';
+                    btnManuscriptWorkspace.href = ctx + '/main/manuscript-workspace/' + workspaceId;
+                } else if (status === 'SUBMITTED_FOR_REVIEW') {
+                    btnManuscriptWorkspace.textContent = '📤 View Submitted Manuscript';
+                    btnManuscriptWorkspace.href = ctx + '/main/manuscript-workspace/' + workspaceId;
+                } else if (status === 'UNDER_REVIEW') {
+                    btnManuscriptWorkspace.textContent = '👀 View Under Review Manuscript';
+                    btnManuscriptWorkspace.href = ctx + '/main/manuscript-workspace/' + workspaceId;
+                } else if (status === 'APPROVED') {
+                    btnManuscriptWorkspace.textContent = '✅ View Approved Manuscript';
+                    btnManuscriptWorkspace.href = ctx + '/main/manuscript-workspace/' + workspaceId;
+                } else if (status === 'REJECTED') {
+                    btnManuscriptWorkspace.textContent = '🔄 Create New Version';
+                    btnManuscriptWorkspace.href = ctx + '/main/chapters/' + chapter.id + '/manuscript-workspace/new-version';
+                } else {
+                    // Default: fallback về view workspace
+                    btnManuscriptWorkspace.textContent = '📝 Manuscript Workspace';
+                    btnManuscriptWorkspace.href = ctx + '/main/manuscript-workspace/' + workspaceId;
+                }
+            }
+        } catch (error) {
+            // Nếu API lỗi → ẩn nút để tránh hiển thị trạng thái sai
+            console.error('Failed to load workspace status:', error);
+            btnManuscriptWorkspace.style.display = 'none';
+        }
+    }
+
+    /**
      * Cập nhật toàn bộ phần metadata (breadcrumb, title, deadline, status chips,
      * nút action, assign due constraints, page progress).
-     * Nút btnManuscriptWorkspace chỉ hiện khi chapter ở EDITORIAL_REVIEW.
+     * Nút btnManuscriptWorkspace được cập nhật async qua updateManuscriptWorkspaceButton().
      */
     function renderMeta() {
         if (!chapter) { return; }
@@ -840,17 +903,10 @@
 
         document.getElementById('btnDelete').style.display = (owner && chapterStatus === 'PLANNING') ? '' : 'none';
         document.getElementById('btnMarkDone').style.display = canSubmit ? '' : 'none';
-        
-        // Nút "Manuscript Workspace" chỉ hiện khi chapter đang ở EDITORIAL_REVIEW
-        var isEditorialReview = chapterStatus === 'EDITORIAL_REVIEW';
-        var btnManuscriptWorkspace = document.getElementById('btnManuscriptWorkspace');
-        if (isEditorialReview) {
-            btnManuscriptWorkspace.style.display = '';
-            btnManuscriptWorkspace.href = ctx + '/main/chapters/' + chapter.id + '/manuscript-workspace/create';
-        } else {
-            btnManuscriptWorkspace.style.display = 'none';
-        }
-        
+
+        // Cập nhật nút Manuscript Workspace async (gọi API để lấy trạng thái thực tế)
+        updateManuscriptWorkspaceButton();
+
         document.getElementById('pagesOwnerActions').style.display = owner ? 'flex' : 'none';
         document.getElementById('pagesOwnerActions').style.gap = '8px';
         document.getElementById('pagesHint').style.display = owner ? '' : 'none';
