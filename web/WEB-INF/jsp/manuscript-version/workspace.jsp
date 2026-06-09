@@ -704,6 +704,19 @@
                                     ${annotation.status}
                                 </div>
 
+                                <c:if test="${version.status == 'UNDER_REVIEW' && (isAssignedTantou || isAdmin) && !isMangakaRole}">
+                                    <div style="margin-top: 8px;">
+                                        <button
+                                            type="button"
+                                            class="btn btn-danger"
+                                            style="padding: 4px 10px; font-size: 11px;"
+                                            onclick="event.stopPropagation(); deleteAnnotation(${annotation.id})"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </c:if>
+
                             </div>
                         </c:forEach>
                     </div>

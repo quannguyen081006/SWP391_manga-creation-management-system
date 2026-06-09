@@ -460,6 +460,35 @@ async function dismissAnnotation(annotationId) {
     }
 }
 
+// Delete annotation
+async function deleteAnnotation(annotationId) {
+    if (!confirm('Are you sure you want to delete this annotation? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${window.contextPath}/api/v1/annotations/${annotationId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload page to show updated annotation list
+            window.location.reload();
+        } else {
+            alert('Failed to delete annotation: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting annotation:', error);
+        alert('Error deleting annotation. Please try again.');
+    }
+}
+
 // Reopen annotation (for resolved/dismissed annotations)
 async function reopenAnnotation(annotationId) {
     if (!confirm('Are you sure you want to reopen this annotation?')) {

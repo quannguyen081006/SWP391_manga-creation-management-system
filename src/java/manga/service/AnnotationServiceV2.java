@@ -275,6 +275,64 @@ public class AnnotationServiceV2 {
     }
 
     /**
+     * Delete annotation (hard delete).
+     */
+    public void deleteAnnotation(Long annotationId, AuthenticatedUser user) {
+        // Check if manuscript version is immutable before deleting annotation
+        String versionCheckSql = "SELECT mv.status FROM Annotation a "
+                + "JOIN ManuscriptVersion mv ON mv.id = a.manuscriptVersionId "
+                + "WHERE a.id = ?";
+        try ( Connection conn = dataSource.getConnection();  PreparedStatement ps = conn.prepareStatement(versionCheckSql)) {
+            ps.setLong(1, annotationId);
+            try ( ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String status = rs.getString("status");
+                    if ("APPROVED".equals(status) || "PUBLISHED".equals(status) || "REJECTED".equals(status) || "ARCHIVED".equals(status)) {
+                        throw new BusinessRuleException(
+                                "Cannot delete annotation: manuscript version is " + status
+                        );
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot check manuscript status", ex);
+        }
+
+        // Role-based authorization: Mangaka cannot delete annotations
+        if (user != null && user.hasRole("MANGAKA")) {
+            throw new BusinessRuleException("ANNOTATION_UNAUTHORIZED_MANGAKA: Mangaka users cannot delete annotations");
+        }
+
+        // Check if annotation has replies - cannot delete annotations with replies
+        String replyCheckSql = "SELECT COUNT(*) FROM Annotation WHERE parentAnnotationId = ?";
+        try ( Connection conn = dataSource.getConnection();  PreparedStatement ps = conn.prepareStatement(replyCheckSql)) {
+            ps.setLong(1, annotationId);
+            try ( ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    long replyCount = rs.getLong(1);
+                    if (replyCount > 0) {
+                        throw new BusinessRuleException("Cannot delete annotation that has replies");
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot check for replies", ex);
+        }
+
+        // Hard delete the annotation
+        String sql = "DELETE FROM Annotation WHERE id = ?";
+        try ( Connection conn = dataSource.getConnection();  PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, annotationId);
+            int rows = ps.executeUpdate();
+            if (rows == 0) {
+                throw new BusinessRuleException("Annotation not found");
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot delete annotation", ex);
+        }
+    }
+
+    /**
      * Add reply to annotation.
      */
     public long addReply(Long parentAnnotationId, Long editorId, String content, AuthenticatedUser user) {

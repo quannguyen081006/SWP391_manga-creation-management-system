@@ -138,6 +138,22 @@ public class AnnotationApiController {
     }
 
     /**
+     * Delete annotation. DELETE /api/v1/annotations/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteAnnotation(
+            @PathVariable Long id,
+            HttpSession session) {
+        AuthenticatedUser user
+                = (AuthenticatedUser) session.getAttribute("AUTH_USER");
+        if (user == null) {
+            return ApiResponse.error("Unauthorized");
+        }
+        annotationService.deleteAnnotation(id, user);
+        return ApiResponse.success(null);
+    }
+
+    /**
      * Add reply to annotation. POST /api/v1/annotations/{id}/replies
      */
     @PostMapping("/{id}/replies")
