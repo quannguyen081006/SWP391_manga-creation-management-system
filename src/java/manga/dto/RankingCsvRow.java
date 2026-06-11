@@ -67,4 +67,3 @@ public class RankingCsvRow {
         this.revenue = revenue;
     }
 }
-

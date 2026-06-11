@@ -17,7 +17,7 @@ public class ReviewDecision {
     private ReviewDecisionType decisionType;
     private String comment;
     private LocalDateTime decisionAt;
-    
+
     // Getters and Setters
     public Long getId() {
         return id;

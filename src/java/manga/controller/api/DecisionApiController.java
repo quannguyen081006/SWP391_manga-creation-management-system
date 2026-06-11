@@ -57,7 +57,3 @@ public class DecisionApiController {
     }
     // Finalize endpoint removed - quorum-based finalization in resolveIfQuorum handles this automatically
 }
-
-
-
-

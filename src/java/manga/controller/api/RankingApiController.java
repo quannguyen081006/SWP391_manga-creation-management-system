@@ -79,7 +79,3 @@ public class RankingApiController {
         return ApiResponse.ok(rankingService.listVoteEntries(id, user), "Vote entries");
     }
 }
-
-
-
-

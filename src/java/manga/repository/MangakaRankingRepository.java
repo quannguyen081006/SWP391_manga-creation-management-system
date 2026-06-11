@@ -54,12 +54,12 @@ public class MangakaRankingRepository {
                 + "JOIN [User] u ON u.id = mrr.mangakaId "
                 + "WHERE mrr.periodId = ? "
                 + "ORDER BY mrr.rankPosition ASC";
-        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> rows = new ArrayList<>();
         try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, periodId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> row = new HashMap<String, Object>();
+                    Map<String, Object> row = new HashMap<>();
                     row.put("id", rs.getLong("id"));
                     row.put("periodId", rs.getLong("periodId"));
                     row.put("mangakaId", rs.getLong("mangakaId"));
