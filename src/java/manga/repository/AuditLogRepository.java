@@ -15,8 +15,7 @@ public class AuditLogRepository {
 
     public void insertLog(Long actorId, String action, String entityType, Long entityId, String detail) {
         String sql = "INSERT INTO AuditLog (actorId, action, entityType, entityId, detail, performedAt) VALUES (?, ?, ?, ?, ?, GETDATE())";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try ( Connection conn = dataSource.getConnection();  PreparedStatement ps = conn.prepareStatement(sql)) {
             if (actorId == null) {
                 ps.setNull(1, java.sql.Types.BIGINT);
             } else {
@@ -30,8 +29,19 @@ public class AuditLogRepository {
                 ps.setLong(4, entityId);
             }
             ps.setString(5, detail);
+            System.out.println("actorId=" + actorId);
+            System.out.println("action=" + action);
+            System.out.println("entityType=" + entityType);
+            System.out.println("entityId=" + entityId);
+            System.out.println("detail=" + detail);
             ps.executeUpdate();
         } catch (SQLException ex) {
+            System.err.println("SQL State: " + ex.getSQLState());
+            System.err.println("Error Code: " + ex.getErrorCode());
+            System.err.println("Message: " + ex.getMessage());
+
+            ex.printStackTrace();
+
             throw new RuntimeException("Cannot insert audit log", ex);
         }
     }

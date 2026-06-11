@@ -59,11 +59,11 @@ public class RankingService {
 
         // Notify Editorial Board
         notificationService.notifyUser(
-            user.getId(), // In real implementation, would notify all Editorial Board members
-            "RANKING_PERIOD_OPENED",
-            "New ranking period '" + request.getName() + "' is now open for vote submissions.",
-            periodId,
-            "RANKING_PERIOD"
+                user.getId(), // In real implementation, would notify all Editorial Board members
+                "RANKING_PERIOD_OPENED",
+                "New ranking period '" + request.getName() + "' is now open for vote submissions.",
+                periodId,
+                "RANKING_PERIOD"
         );
 
         return periodId;
@@ -86,7 +86,14 @@ public class RankingService {
             throw new BusinessRuleException("Vote entry only allowed while period OPEN (BR-49)");
         }
 
-        
+        // BR-RNK-01: Validate current date is within period date range
+        java.sql.Date startDate = (java.sql.Date) period.get("startDate");
+        java.sql.Date endDate = (java.sql.Date) period.get("endDate");
+        java.sql.Date currentDate = new java.sql.Date(System.currentTimeMillis());
+
+        if (currentDate.before(startDate) || currentDate.after(endDate)) {
+            throw new BusinessRuleException("Vote entry only allowed during active period dates (BR-RNK-01)");
+        }
 
         // Validate voteCount (BR-51)
         if (request.getVoteCount() < 0) {
@@ -108,8 +115,8 @@ public class RankingService {
         }
 
         // Submit entry (repository handles duplicate check BR-54)
-        rankingRepository.submitEntry(periodId, request.getSeriesId(), user.getId(), 
-            request.getVoteCount(), request.getReaderCount(), request.getRevenue());
+        rankingRepository.submitEntry(periodId, request.getSeriesId(), user.getId(),
+                request.getVoteCount(), request.getReaderCount(), request.getRevenue());
     }
 
     @Transactional
