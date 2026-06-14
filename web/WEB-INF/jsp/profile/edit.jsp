@@ -77,18 +77,19 @@
                 <label for="confirmNewPassword">Confirm New Password</label>
                 <input id="confirmNewPassword" type="password" name="confirmNewPassword" minlength="5" required autocomplete="new-password" />
             </div>
-            <div class="profile-actions">
+            <div style="text-align:right;">
                 <button class="btn primary" type="submit">Change Password</button>
             </div>
         </form>
+    </section>
 
-        <hr style="margin: 1.5rem 0;">
+    <div style="grid-column:1 / -1; text-align:right; margin-top:1rem; padding-right:0;">
         <a href="${pageContext.request.contextPath}/main/logout"
-           class="btn btn-danger"
-           data-confirm="Are you sure you want to logout?">
+           data-confirm="Are you sure you want to logout?"
+           style="display:inline-block;padding:0.5rem 1.25rem;border-radius:6px;text-decoration:none;background-color:#e53935;color:#fff;border:none;cursor:pointer;font-size:0.9rem;">
             Logout
         </a>
-    </section>
+    </div>
 </div>
 
 <script src="${pageContext.request.contextPath}/assets/js/profile.js"></script>
