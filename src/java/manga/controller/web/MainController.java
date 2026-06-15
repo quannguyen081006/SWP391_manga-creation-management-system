@@ -84,14 +84,6 @@ public class MainController {
         return authController.login(username, password, request, model);
     }
 
-    @RequestMapping(value = "/switch-role", method = RequestMethod.GET)
-    public String switchRole(
-            @RequestParam("username") String username,
-            @RequestParam(value = "back", required = false) String back,
-            HttpServletRequest request) {
-        return authController.switchRole(username, back, request);
-    }
-
     @RequestMapping(value = "/logout", method = RequestMethod.GET)
     public String logout(HttpServletRequest request) {
         return authController.logout(request);

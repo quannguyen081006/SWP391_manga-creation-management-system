@@ -12,10 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Exposes JSON notification actions for the header dropdown and full page.
- * All actions are scoped to the authenticated user from the HTTP session.
- */
 @RestController
 @RequestMapping("/api/v1/notifications")
 public class NotificationApiController {
@@ -23,67 +19,34 @@ public class NotificationApiController {
     @Autowired
     private NotificationRepository notificationRepository;
 
-    /**
-     * Lists notifications for the authenticated user.
-     *
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return JSON response containing notification data
-     */
-    @RequestMapping(method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
+        @RequestMapping(method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
     public String list(HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         return ok(notificationRepository.listByUser(user.getId()), "Notifications");
     }
 
-    /**
-     * Marks one notification as read through the API.
-     *
-     * @param id notification id
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return JSON success response
-     */
-    @RequestMapping(value = "/{id}/read", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
+        @RequestMapping(value = "/{id}/read", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
     public String markRead(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         notificationRepository.markRead(user.getId(), id);
         return okEmpty("Notification marked as read");
     }
 
-    /**
-     * Marks one notification as unread through the API.
-     *
-     * @param id notification id
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return JSON success response
-     */
-    @RequestMapping(value = "/{id}/unread", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
+        @RequestMapping(value = "/{id}/unread", method = RequestMethod.PATCH, produces = "application/json;charset=UTF-8")
     public String markUnread(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         notificationRepository.markUnread(user.getId(), id);
         return okEmpty("Notification marked as unread");
     }
 
-    /**
-     * Deletes one notification owned by the authenticated user.
-     *
-     * @param id notification id
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return JSON success response
-     */
-    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = "application/json;charset=UTF-8")
+        @RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = "application/json;charset=UTF-8")
     public String delete(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         notificationRepository.delete(user.getId(), id);
         return okEmpty("Notification deleted");
     }
 
-    /**
-     * Marks every notification for the authenticated user as read.
-     *
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return JSON success response
-     */
-    @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
+        @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
     public String markAllRead(HttpSession session) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         notificationRepository.markAllRead(user.getId());

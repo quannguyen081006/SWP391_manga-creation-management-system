@@ -7,28 +7,15 @@ import javax.servlet.http.HttpSession;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
-/**
- * Protects authenticated web/API routes and enforces URL-level RBAC before
- * controller methods run.
- */
 public class AuthInterceptor implements HandlerInterceptor {
 
-    /**
-     * Checks public routes, session authentication, cache headers, and RBAC.
-     *
-     * @param request current HTTP request
-     * @param response current HTTP response
-     * @param handler Spring MVC handler selected for the request
-     * @return {@code true} when the request is allowed to continue
-     * @throws Exception when writing redirects or JSON errors fails
-     */
-    @Override
+        @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String uri = request.getRequestURI();
         String context = request.getContextPath();
 
         // login -> pass
-        if (uri.endsWith("/login") || uri.endsWith("/logout") || uri.endsWith("/switch-role")
+        if (uri.endsWith("/login") || uri.endsWith("/logout")
                 || uri.contains("/assets/") || uri.endsWith("/redirect.jsp")) {
             return true;
         }
@@ -86,7 +73,6 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     private boolean isAllowed(AuthenticatedUser user, String uri, String context) {
         String path = uri.substring(context.length());
-        // BR-SYS user management is admin-only.
         if (path.startsWith("/api/v1/users")) {
             return user.hasRole("ADMIN");
         }
@@ -94,7 +80,6 @@ public class AuthInterceptor implements HandlerInterceptor {
             return user.hasRole("ADMIN");
         }
         if (path.startsWith("/main/proposals")) {
-            // BR-PRO/BR-VOT pages are visible to proposal authors and review roles.
             return user.hasRole("ADMIN") || user.hasRole("MANGAKA") || user.hasRole("TANTOU_EDITOR") || user.hasRole("EDITORIAL_BOARD");
         }
         if (path.startsWith("/main/series") || path.startsWith("/main/chapters")) {
@@ -110,39 +95,19 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         if (path.startsWith("/main/tasks")) {
-            // BR-TSK routes include creators, assistants, editors, and admins.
             return user.hasRole("ADMIN") || user.hasRole("MANGAKA") || user.hasRole("ASSISTANT") || user.hasRole("TANTOU_EDITOR");
         }
         if (path.startsWith("/main/manuscripts")) {
-            // BR-MAN routes are limited to manuscript-owning and editorial roles.
             return user.hasRole("ADMIN") || user.hasRole("MANGAKA") || user.hasRole("TANTOU_EDITOR");
         }
         return true;
     }
 
-    /**
-     * Performs no post-controller work.
-     *
-     * @param request current HTTP request
-     * @param response current HTTP response
-     * @param handler Spring MVC handler that ran
-     * @param modelAndView model and view from the controller
-     * @return nothing; this interceptor has no post-handle side effect
-     */
-    @Override
+        @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) {
     }
 
-    /**
-     * Performs no request-completion work.
-     *
-     * @param request current HTTP request
-     * @param response current HTTP response
-     * @param handler Spring MVC handler that ran
-     * @param ex exception raised by the handler, when any
-     * @return nothing; this interceptor has no completion side effect
-     */
-    @Override
+        @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
     }
 }

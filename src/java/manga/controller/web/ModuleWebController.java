@@ -38,23 +38,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-/**
- * Controller gom cac trang web chinh trong khu vuc /main.
- *
- * MUC LUC (Chapter & Task):
- *  1. seriesDetail()                    - GET  /main/series/{id}
- *  2. chapterDetailPage()               - GET  /main/chapters/detail
- *  3. chapterDetail()                   - GET  /main/chapters/{id}
- *  4. chapterSubmitReview()             - POST /main/chapters/{id}/submit-review
- *  5. taskDetail()                      - GET  /main/tasks/{id}
- *  6. taskUpdateByAssistant()           - POST /main/tasks/{id}/assistant-status
- *  7. taskApprove()                     - POST /main/tasks/{id}/approve
- *  8. taskReject()                      - POST /main/tasks/{id}/reject
- *  9. manuscriptWorkspaceCreate()       - GET/POST /main/chapters/{chapterId}/manuscript-workspace/create
- * 10. manuscriptWorkspaceNewVersion()   - POST /main/chapters/{chapterId}/manuscript-workspace/new-version
- * 11. manuscriptWorkspaceHistory()      - GET  /main/chapters/{chapterId}/manuscript-workspace/history
- * 12. manuscriptWorkspaceImportPages()  - POST /main/manuscript-workspace/{id}/import-pages
- */
 @Controller
 @RequestMapping("/main")
 public class ModuleWebController {
@@ -541,10 +524,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Hien thi trang quan ly user va role cho admin.
-     */
-    @RequestMapping(value = "/users", method = RequestMethod.GET)
+        @RequestMapping(value = "/users", method = RequestMethod.GET)
     public String users(
             HttpSession session,
             @RequestParam(value = "created", required = false) Long created,
@@ -566,10 +546,7 @@ public class ModuleWebController {
         return users(session, null, null, model);
     }
 
-    /**
-     * Mo form tao user moi.
-     */
-    @RequestMapping(value = "/users/new", method = RequestMethod.GET)
+        @RequestMapping(value = "/users/new", method = RequestMethod.GET)
     public String userNew(HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         requireAdmin(user);
@@ -580,10 +557,7 @@ public class ModuleWebController {
         return "user/form";
     }
 
-    /**
-     * Mo form cap nhat thong tin user.
-     */
-    @RequestMapping(value = "/users/{id}/edit", method = RequestMethod.GET)
+        @RequestMapping(value = "/users/{id}/edit", method = RequestMethod.GET)
     public String userEdit(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         requireAdmin(user);
@@ -598,10 +572,7 @@ public class ModuleWebController {
         return "user/form";
     }
 
-    /**
-     * Tao user moi va gan cac role duoc chon.
-     */
-    @RequestMapping(value = "/users/create", method = RequestMethod.POST)
+        @RequestMapping(value = "/users/create", method = RequestMethod.POST)
     public String userCreate(
             HttpSession session,
             @RequestParam("username") String username,
@@ -614,6 +585,9 @@ public class ModuleWebController {
         List<String> roles = parseRoleOption(roleOption);
         try {
             requireAdmin(user);
+            if (password == null || password.trim().isEmpty()) {
+                password = "12345";
+            }
             validateCreateUser(username, password, fullName, email, roles);
             long id = userAdminRepository.createUser(username, password, fullName, email);
             for (String role : roles) {
@@ -635,10 +609,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Cap nhat thong tin co ban cua user.
-     */
-    @RequestMapping(value = "/users/{id}/update", method = RequestMethod.POST)
+        @RequestMapping(value = "/users/{id}/update", method = RequestMethod.POST)
     public String userUpdate(
             @PathVariable("id") long id,
             HttpSession session,
@@ -660,10 +631,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Kich hoat hoac vo hieu hoa tai khoan user.
-     */
-    @RequestMapping(value = "/users/{id}/status", method = RequestMethod.POST)
+        @RequestMapping(value = "/users/{id}/status", method = RequestMethod.POST)
     public String userStatus(
             @PathVariable("id") long id,
             HttpSession session,
@@ -683,10 +651,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Them mot hoac nhieu role hop le cho user.
-     */
-    @RequestMapping(value = "/users/{id}/roles", method = RequestMethod.POST)
+        @RequestMapping(value = "/users/{id}/roles", method = RequestMethod.POST)
     public String userRole(
             @PathVariable("id") long id,
             HttpSession session,
@@ -716,10 +681,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Go mot role hien co khoi user.
-     */
-    @RequestMapping(value = "/users/{id}/roles/remove", method = RequestMethod.POST)
+        @RequestMapping(value = "/users/{id}/roles/remove", method = RequestMethod.POST)
     public String userRoleRemove(
             @PathVariable("id") long id,
             HttpSession session,
@@ -868,10 +830,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * View manuscript workspace - page-centric review interface.
-     */
-    @RequestMapping(value = "/manuscript-workspace/{id}", method = RequestMethod.GET)
+        @RequestMapping(value = "/manuscript-workspace/{id}", method = RequestMethod.GET)
     public String manuscriptWorkspaceView(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         manga.model.ManuscriptVersion version = manuscriptVersionService.getVersion(id);
@@ -982,10 +941,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Submit manuscript for review.
-     */
-    @RequestMapping(value = "/manuscript-workspace/{id}/submit", method = RequestMethod.POST)
+        @RequestMapping(value = "/manuscript-workspace/{id}/submit", method = RequestMethod.POST)
     public String manuscriptWorkspaceSubmit(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         try {
@@ -997,10 +953,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Approve manuscript.
-     */
-    @RequestMapping(value = "/manuscript-workspace/{id}/approve", method = RequestMethod.POST)
+        @RequestMapping(value = "/manuscript-workspace/{id}/approve", method = RequestMethod.POST)
     public String manuscriptWorkspaceApprove(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         try {
@@ -1012,10 +965,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Reject manuscript with feedback.
-     */
-    @RequestMapping(value = "/manuscript-workspace/{id}/reject", method = RequestMethod.POST)
+        @RequestMapping(value = "/manuscript-workspace/{id}/reject", method = RequestMethod.POST)
     public String manuscriptWorkspaceReject(@PathVariable("id") long id, HttpSession session,
             @RequestParam("feedback") String feedback, Model model) {
         AuthenticatedUser user = requireUser(session);
@@ -1028,10 +978,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * Publish manuscript.
-     */
-    @RequestMapping(value = "/manuscript-workspace/{id}/publish", method = RequestMethod.POST)
+        @RequestMapping(value = "/manuscript-workspace/{id}/publish", method = RequestMethod.POST)
     public String manuscriptWorkspacePublish(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         try {
@@ -1065,10 +1012,7 @@ public class ModuleWebController {
         }
     }
 
-    /**
-     * View review dashboard.
-     */
-    @RequestMapping(value = "/manuscript-workspace/{id}/dashboard", method = RequestMethod.GET)
+        @RequestMapping(value = "/manuscript-workspace/{id}/dashboard", method = RequestMethod.GET)
     public String manuscriptWorkspaceDashboard(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         manga.dto.ReviewDashboardDTO dashboard = manuscriptVersionService.getReviewDashboard(id);
@@ -1097,10 +1041,7 @@ public class ModuleWebController {
         return "redirect:/main/manuscript-workspace/" + latestVersion.getId();
     }
 
-    /**
-     * Compare two manuscript versions.
-     */
-    @RequestMapping(value = "/manuscript-workspace/compare", method = RequestMethod.GET)
+        @RequestMapping(value = "/manuscript-workspace/compare", method = RequestMethod.GET)
     public String manuscriptWorkspaceCompare(
             @RequestParam("versionId1") long versionId1,
             @RequestParam("versionId2") long versionId2,
@@ -1162,12 +1103,7 @@ public class ModuleWebController {
         return "manuscript-version/compare";
     }
 
-    /**
-     * Tantou Review Inbox - Show all manuscripts waiting for Tantou review.
-     * Tantou only sees manuscripts from their assigned series. Admin sees all
-     * under-review manuscripts.
-     */
-    @RequestMapping(value = "/manuscript-review", method = RequestMethod.GET)
+        @RequestMapping(value = "/manuscript-review", method = RequestMethod.GET)
     public String manuscriptReviewInbox(HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
 

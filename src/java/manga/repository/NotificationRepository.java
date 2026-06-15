@@ -11,44 +11,17 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-/**
- * Persists notification records and maps database rows to {@link NotificationItem}.
- * It is the single data-access point used by the header dropdown, full
- * notification page, and notification API actions.
- */
 @Repository
 public class NotificationRepository {
 
     @Autowired
     private DataSource dataSource;
 
-    /**
-     * Creates a notification and derives its title and stored view URL.
-     *
-     * @param userId target user id
-     * @param type notification type
-     * @param message user-facing message
-     * @param referenceId related entity id, or a non-positive value when absent
-     * @param referenceType related entity type used for view URL mapping
-     * @return nothing; the notification row is inserted as a side effect
-     */
-    public void create(long userId, String type, String message, long referenceId, String referenceType) {
+        public void create(long userId, String type, String message, long referenceId, String referenceType) {
         create(userId, type, defaultTitle(type), message, defaultViewUrl(type, referenceId, referenceType), referenceId, referenceType);
     }
 
-    /**
-     * Creates a notification with a caller-provided title and stored view URL.
-     *
-     * @param userId target user id
-     * @param type notification type
-     * @param title user-facing notification title
-     * @param message user-facing notification message
-     * @param viewUrl stored redirect target captured at creation time
-     * @param referenceId related entity id, or a non-positive value when absent
-     * @param referenceType related entity type
-     * @return nothing; the notification row is inserted as a side effect
-     */
-    public void create(long userId, String type, String title, String message, String viewUrl, long referenceId, String referenceType) {
+        public void create(long userId, String type, String title, String message, String viewUrl, long referenceId, String referenceType) {
         String sql = "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, 0, GETDATE())";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -70,24 +43,11 @@ public class NotificationRepository {
         }
     }
 
-    /**
-     * Lists the default number of notifications for a user.
-     *
-     * @param userId owner user id
-     * @return up to 100 notifications ordered newest first
-     */
-    public List<NotificationItem> listByUser(long userId) {
+        public List<NotificationItem> listByUser(long userId) {
         return listByUser(userId, 100);
     }
 
-    /**
-     * Lists notifications for a user with an explicit row limit.
-     *
-     * @param userId owner user id
-     * @param limit maximum number of notifications to return
-     * @return notifications ordered newest first
-     */
-    public List<NotificationItem> listByUser(long userId, int limit) {
+        public List<NotificationItem> listByUser(long userId, int limit) {
         // SQL Server TOP is parameterized so the header can request many rows safely.
         String sql = "SELECT TOP (?) id, userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt FROM Notification WHERE userId = ? ORDER BY createdAt DESC";
         List<NotificationItem> rows = new ArrayList<NotificationItem>();
@@ -106,13 +66,7 @@ public class NotificationRepository {
         return rows;
     }
 
-    /**
-     * Counts unread notifications for a user.
-     *
-     * @param userId owner user id
-     * @return unread notification count
-     */
-    public int unreadCount(long userId) {
+        public int unreadCount(long userId) {
         String sql = "SELECT COUNT(*) FROM Notification WHERE userId = ? AND isRead = 0";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -125,49 +79,22 @@ public class NotificationRepository {
         }
     }
 
-    /**
-     * Marks one notification as read for its owner.
-     *
-     * @param userId owner user id
-     * @param id notification id
-     * @return nothing; the row is updated as a side effect
-     */
-    public void markRead(long userId, long id) {
+        public void markRead(long userId, long id) {
         String sql = "UPDATE Notification SET isRead = 1 WHERE id = ? AND userId = ?";
         update(sql, id, userId);
     }
 
-    /**
-     * Marks one notification as unread for its owner.
-     *
-     * @param userId owner user id
-     * @param id notification id
-     * @return nothing; the row is updated as a side effect
-     */
-    public void markUnread(long userId, long id) {
+        public void markUnread(long userId, long id) {
         String sql = "UPDATE Notification SET isRead = 0 WHERE id = ? AND userId = ?";
         update(sql, id, userId);
     }
 
-    /**
-     * Deletes one notification when it belongs to the user.
-     *
-     * @param userId owner user id
-     * @param id notification id
-     * @return nothing; the row is deleted as a side effect
-     */
-    public void delete(long userId, long id) {
+        public void delete(long userId, long id) {
         String sql = "DELETE FROM Notification WHERE id = ? AND userId = ?";
         update(sql, id, userId);
     }
 
-    /**
-     * Marks every unread notification for a user as read.
-     *
-     * @param userId owner user id
-     * @return nothing; matching rows are updated as a side effect
-     */
-    public void markAllRead(long userId) {
+        public void markAllRead(long userId) {
         String sql = "UPDATE Notification SET isRead = 1 WHERE userId = ? AND isRead = 0";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -178,15 +105,7 @@ public class NotificationRepository {
         }
     }
 
-    /**
-     * Checks whether a notification of a given type/reference already exists.
-     *
-     * @param userId owner user id
-     * @param type notification type
-     * @param referenceId related entity id, or a non-positive value when absent
-     * @return {@code true} when a duplicate notification exists
-     */
-    public boolean exists(long userId, String type, long referenceId) {
+        public boolean exists(long userId, String type, long referenceId) {
         String sql = "SELECT COUNT(*) FROM Notification WHERE userId = ? AND type = ? AND referenceId = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -209,14 +128,7 @@ public class NotificationRepository {
         return false;
     }
 
-    /**
-     * Loads the stored view URL for a notification owned by a user.
-     *
-     * @param userId owner user id
-     * @param id notification id
-     * @return stored view URL, a legacy fallback URL, or {@code null}
-     */
-    public String viewUrlByUser(long userId, long id) {
+        public String viewUrlByUser(long userId, long id) {
         String sql = "SELECT type, viewUrl, referenceId FROM Notification WHERE id = ? AND userId = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

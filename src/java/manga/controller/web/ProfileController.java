@@ -19,9 +19,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Allows authenticated users to maintain their own account profile.
- */
 @Controller
 @RequestMapping("/main/profile")
 public class ProfileController {

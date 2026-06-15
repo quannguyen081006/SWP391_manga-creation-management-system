@@ -11,10 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.view.RedirectView;
 
-/**
- * Handles authenticated notification pages and click-through redirects.
- * This controller owns the web flow for `/main/notifications`.
- */
 @Controller
 @RequestMapping("/main/notifications")
 public class NotificationWebController {
@@ -22,14 +18,7 @@ public class NotificationWebController {
     @Autowired
     private NotificationRepository notificationRepository;
 
-    /**
-     * Displays the current user's notification list.
-     *
-     * @param session current HTTP session containing `AUTH_USER`
-     * @param model MVC model that receives notifications and unreadCount
-     * @return JSP view name for the notification list
-     */
-    @RequestMapping(method = RequestMethod.GET)
+        @RequestMapping(method = RequestMethod.GET)
     public String list(HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         model.addAttribute("notifications", notificationRepository.listByUser(user.getId(), 100));
@@ -37,28 +26,14 @@ public class NotificationWebController {
         return "notification/list";
     }
 
-    /**
-     * Marks one notification as read from the web page form action.
-     *
-     * @param id notification id
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return redirect back to the notification list
-     */
-    @RequestMapping(value = "/{id}/read", method = RequestMethod.POST)
+        @RequestMapping(value = "/{id}/read", method = RequestMethod.POST)
     public String markRead(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = requireUser(session);
         notificationRepository.markRead(user.getId(), id);
         return "redirect:/main/notifications";
     }
 
-    /**
-     * Handles clicking a notification by marking it read and redirecting safely.
-     *
-     * @param id notification id
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return redirect to a supported target URL or back to notifications
-     */
-    @RequestMapping(value = "/{id}/click", method = RequestMethod.GET)
+        @RequestMapping(value = "/{id}/click", method = RequestMethod.GET)
     public RedirectView click(@PathVariable("id") long id, HttpSession session) {
         AuthenticatedUser user = requireUser(session);
         notificationRepository.markRead(user.getId(), id);
@@ -69,12 +44,6 @@ public class NotificationWebController {
         return redirectTo("/main/notifications");
     }
 
-    /**
-     * Marks all notifications for the current user as read.
-     *
-     * @param session current HTTP session containing `AUTH_USER`
-     * @return redirect back to the notification list
-     */
     @RequestMapping(value = "/mark-all-read", method = RequestMethod.POST)
     public String markAllRead(HttpSession session) {
         AuthenticatedUser user = requireUser(session);

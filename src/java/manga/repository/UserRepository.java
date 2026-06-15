@@ -13,23 +13,13 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-/**
- * Reads user account data for authentication and role-based lookups.
- * This repository builds {@link AuthenticatedUser} instances used in sessions.
- */
 @Repository
 public class UserRepository {
 
     @Autowired
     private DataSource dataSource;
 
-    /**
-     * Finds a user by username and loads all assigned roles.
-     *
-     * @param username username to search for
-     * @return authenticated user with role set populated, or {@code null}
-     */
-    public AuthenticatedUser findByUsername(String username) {
+        public AuthenticatedUser findByUsername(String username) {
         String sql = "SELECT id, username, passwordHash, fullName, email, avatarUrl, status FROM [User] WHERE username = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -67,13 +57,7 @@ public class UserRepository {
         }
     }
 
-    /**
-     * Finds users assigned to a specific role.
-     *
-     * @param roleName role name to filter by
-     * @return list of users containing id, username, and fullName
-     */
-    public List<Map<String, Object>> findByRole(String roleName) {
+        public List<Map<String, Object>> findByRole(String roleName) {
         String sql = "SELECT u.id, u.username, u.fullName FROM [User] u " +
                      "JOIN UserRole ur ON u.id = ur.userId " +
                      "JOIN [Role] r ON ur.roleId = r.id " +

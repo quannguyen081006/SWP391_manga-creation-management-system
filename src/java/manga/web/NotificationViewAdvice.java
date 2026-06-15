@@ -10,10 +10,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
-/**
- * Adds notification summary attributes to every MVC controller model.
- * The shared header uses these attributes for the unread badge and dropdown.
- */
 @ControllerAdvice(annotations = Controller.class)
 public class NotificationViewAdvice {
 
@@ -29,13 +25,7 @@ public class NotificationViewAdvice {
         return notificationRepository.unreadCount(user.getId());
     }
 
-    /**
-     * Provides notifications for the header dropdown.
-     *
-     * @param session current HTTP session
-     * @return notifications for the authenticated user, or an empty list
-     */
-    @ModelAttribute("headerNotifications")
+        @ModelAttribute("headerNotifications")
     public List<NotificationItem> latestNotifications(HttpSession session) {
         AuthenticatedUser user = getUser(session);
         if (user == null) {

@@ -13,22 +13,13 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-/**
- * Provides admin-facing user management data access for accounts, statuses,
- * role assignment, and switch-role dropdown data.
- */
 @Repository
 public class UserAdminRepository {
 
     @Autowired
     private DataSource dataSource;
 
-    /**
-     * Lists all users with their assigned role names for admin screens.
-     *
-     * @return all user rows with a `roles` list added to each map
-     */
-    public List<Map<String, Object>> listUsers() {
+        public List<Map<String, Object>> listUsers() {
         String sql = "SELECT id, username, fullName, email, avatarUrl, status, createdAt, updatedAt FROM [User] ORDER BY id";
         List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
         try (Connection conn = dataSource.getConnection();
@@ -45,79 +36,7 @@ public class UserAdminRepository {
         return rows;
     }
 
-    /**
-     * Lists active users with roles for the header switch-role menu.
-     *
-     * @return active users with `roles` and display-oriented `switchItems`
-     */
-    public List<Map<String, Object>> listActiveUsersForSwitch() {
-        String sql = "SELECT id, username, fullName, email, avatarUrl, status, createdAt, updatedAt FROM [User] WHERE status = 'ACTIVE' ORDER BY id";
-        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                Map<String, Object> row = toMap(rs);
-                row.put("roles", listRoles(conn, rs.getLong("id")));
-                rows.add(row);
-            }
-            addSwitchItems(rows);
-        } catch (SQLException ex) {
-            throw new RuntimeException("Cannot list switch users", ex);
-        }
-        return rows;
-    }
-
-    private void addSwitchItems(List<Map<String, Object>> rows) {
-        Map<String, Integer> roleIndexes = new HashMap<String, Integer>();
-        for (Map<String, Object> row : rows) {
-            List<Map<String, Object>> switchItems = new ArrayList<Map<String, Object>>();
-            Object rawRoles = row.get("roles");
-            if (rawRoles instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<String> roles = (List<String>) rawRoles;
-                for (String role : roles) {
-                    // Number users by role so the switch UI can show stable role labels.
-                    Integer current = roleIndexes.get(role);
-                    int next = current == null ? 1 : current.intValue() + 1;
-                    roleIndexes.put(role, Integer.valueOf(next));
-
-                    Map<String, Object> item = new HashMap<String, Object>();
-                    item.put("role", role);
-                    item.put("label", roleDisplayLabel(role) + " " + next);
-                    switchItems.add(item);
-                }
-            }
-            row.put("switchItems", switchItems);
-        }
-    }
-
-    private String roleDisplayLabel(String role) {
-        if ("ADMIN".equals(role)) {
-            return "Admin";
-        }
-        if ("MANGAKA".equals(role)) {
-            return "Mangaka";
-        }
-        if ("ASSISTANT".equals(role)) {
-            return "Assistant";
-        }
-        if ("TANTOU_EDITOR".equals(role)) {
-            return "Tantou Editor";
-        }
-        if ("EDITORIAL_BOARD".equals(role)) {
-            return "Board Member";
-        }
-        return role;
-    }
-
-    /**
-     * Loads one user and its assigned roles by id.
-     *
-     * @param id user id
-     * @return user map with roles, or {@code null} when no row exists
-     */
-    public Map<String, Object> getUser(long id) {
+        public Map<String, Object> getUser(long id) {
         String sql = "SELECT id, username, fullName, email, avatarUrl, status, createdAt, updatedAt FROM [User] WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -135,16 +54,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Creates a new active user after validating account fields.
-     *
-     * @param username unique username
-     * @param passwordHash password value stored by the current project
-     * @param fullName display name
-     * @param email unique email address
-     * @return generated user id
-     */
-    public long createUser(String username, String passwordHash, String fullName, String email) {
+        public long createUser(String username, String passwordHash, String fullName, String email) {
         validateUserFields(username, passwordHash, fullName, email);
         String sql = "INSERT INTO [User] (username, passwordHash, fullName, email, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, 'ACTIVE', GETDATE(), GETDATE())";
         try (Connection conn = dataSource.getConnection();
@@ -175,15 +85,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Updates basic profile fields for an existing user.
-     *
-     * @param id user id
-     * @param fullName new full name
-     * @param email new unique email address
-     * @return nothing; the user row is updated as a side effect
-     */
-    public void updateUser(long id, String fullName, String email) {
+        public void updateUser(long id, String fullName, String email) {
         if (isBlank(fullName) || isBlank(email) || !email.contains("@")) {
             throw new IllegalArgumentException("Full name and valid email are required");
         }
@@ -206,14 +108,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Updates a user's status.
-     *
-     * @param id user id
-     * @param status requested status, limited to ACTIVE or INACTIVE
-     * @return nothing; the user row is updated as a side effect
-     */
-    public void updateStatus(long id, String status) {
+        public void updateStatus(long id, String status) {
         String normalized = normalizeStatus(status);
         String sql = "UPDATE [User] SET status = ?, updatedAt = GETDATE() WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
@@ -234,14 +129,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Assigns a role to a user if the role exists and the final combination is valid.
-     *
-     * @param userId target user id
-     * @param roleName role name to assign
-     * @return nothing; the role assignment is inserted as a side effect
-     */
-    public void addRole(long userId, String roleName) {
+        public void addRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         String roleSql = "SELECT id FROM [Role] WHERE name = ?";
         String existsSql = "SELECT 1 FROM UserRole WHERE userId = ? AND roleId = ?";
@@ -280,14 +168,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Removes a role assignment from a user while protecting the last admin.
-     *
-     * @param userId target user id
-     * @param roleName role name to remove
-     * @return nothing; the role assignment is deleted as a side effect
-     */
-    public void removeRole(long userId, String roleName) {
+        public void removeRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         String sql = "DELETE ur FROM UserRole ur JOIN [Role] r ON ur.roleId = r.id WHERE ur.userId = ? AND r.name = ?";
         try (Connection conn = dataSource.getConnection();
@@ -306,13 +187,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Lists assigned role names for a user.
-     *
-     * @param userId target user id
-     * @return ordered role names for the user
-     */
-    public List<String> listRoles(long userId) {
+        public List<String> listRoles(long userId) {
         try (Connection conn = dataSource.getConnection()) {
             return listRoles(conn, userId);
         } catch (SQLException ex) {
@@ -320,57 +195,11 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Lists role switch display items for a user's current roles.
-     *
-     * @param userId target user id
-     * @return role id, role name, and display label rows
-     */
-    public List<Map<String, Object>> listRoleSwitchItems(long userId) {
-        // ROW_NUMBER gives a stable per-role index for labels such as "Assistant 2".
-        String sql =
-            "WITH RankedRoles AS ("
-            + "SELECT u.id AS userId, r.id AS roleId, r.name AS roleName, "
-            + "ROW_NUMBER() OVER (PARTITION BY r.name ORDER BY u.id ASC) AS roleIndex "
-            + "FROM [User] u "
-            + "JOIN UserRole ur ON ur.userId = u.id "
-            + "JOIN [Role] r ON r.id = ur.roleId "
-            + "WHERE u.status = 'ACTIVE') "
-            + "SELECT roleId, roleName, roleIndex FROM RankedRoles WHERE userId = ? ORDER BY roleId";
-        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String roleName = rs.getString("roleName");
-                    int roleIndex = rs.getInt("roleIndex");
-                    Map<String, Object> row = new HashMap<String, Object>();
-                    row.put("roleId", Long.valueOf(rs.getLong("roleId")));
-                    row.put("roleName", roleName);
-                    row.put("displayLabel", roleDisplayLabel(roleName) + " " + roleIndex);
-                    rows.add(row);
-                }
-            }
-        } catch (SQLException ex) {
-            throw new RuntimeException("Cannot list current user roles", ex);
-        }
-        return rows;
-    }
-
-    /**
-     * Checks whether the system already has any admin role assignment.
-     *
-     * @return {@code true} when at least one ADMIN role exists
-     */
-    public boolean hasAnyAdmin() {
+        public boolean hasAnyAdmin() {
         return countUsersWithRole("ADMIN") > 0;
     }
 
-    /**
-     * Updates the fields a signed-in user may edit on their own profile.
-     */
-    public void updateProfile(long userId, String fullName, String email, String avatarUrl) {
+        public void updateProfile(long userId, String fullName, String email, String avatarUrl) {
         if (isBlank(fullName) || !isValidEmail(email)) {
             throw new IllegalArgumentException("Full name and valid email are required");
         }
@@ -394,10 +223,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Updates the password value used by the current authentication flow.
-     */
-    public void updatePassword(long userId, String newPasswordHash) {
+        public void updatePassword(long userId, String newPasswordHash) {
         if (isBlank(newPasswordHash) || newPasswordHash.length() < 5) {
             throw new IllegalArgumentException("Password must be at least 5 characters");
         }
@@ -414,10 +240,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Loads the current password value for password verification.
-     */
-    public String getPasswordHash(long userId) {
+        public String getPasswordHash(long userId) {
         String sql = "SELECT passwordHash FROM [User] WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -430,10 +253,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Checks email uniqueness while allowing the current user to keep their email.
-     */
-    public boolean emailExistsExcludingUser(String email, long userId) {
+        public boolean emailExistsExcludingUser(String email, long userId) {
         if (isBlank(email)) {
             return false;
         }
@@ -444,14 +264,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Checks whether a user has a specific role.
-     *
-     * @param userId target user id
-     * @param roleName role name to check
-     * @return {@code true} when the user has the role
-     */
-    public boolean hasRole(long userId, String roleName) {
+        public boolean hasRole(long userId, String roleName) {
         String normalizedRole = normalizeRole(roleName);
         try (Connection conn = dataSource.getConnection()) {
             return userHasRole(conn, userId, normalizedRole);
@@ -460,13 +273,7 @@ public class UserAdminRepository {
         }
     }
 
-    /**
-     * Counts users assigned to a specific role.
-     *
-     * @param roleName role name to count
-     * @return number of users assigned to that role
-     */
-    public int countUsersWithRole(String roleName) {
+        public int countUsersWithRole(String roleName) {
         String normalizedRole = normalizeRole(roleName);
         try (Connection conn = dataSource.getConnection()) {
             return countUsersWithRole(conn, normalizedRole);
@@ -615,13 +422,7 @@ public class UserAdminRepository {
         return row;
     }
 
-    /**
-     * Gets a user's full name by id.
-     *
-     * @param userId target user id
-     * @return full name, or {@code null} when the user is not found
-     */
-    public String getFullNameById(long userId) {
+        public String getFullNameById(long userId) {
         String sql = "SELECT fullName FROM [User] WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

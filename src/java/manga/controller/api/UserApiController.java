@@ -14,10 +14,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Exposes admin-only user management APIs for account creation, profile
- * updates, status changes, and role assignment.
- */
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserApiController {
@@ -25,29 +21,13 @@ public class UserApiController {
     @Autowired
     private UserAdminRepository userAdminRepository;
 
-    /**
-     * Lists all users for admin management.
-     *
-     * @param session current HTTP session containing an ADMIN user
-     * @return API response containing all users and roles
-     */
-    @RequestMapping(method = RequestMethod.GET)
+        @RequestMapping(method = RequestMethod.GET)
     public ApiResponse<List<Map<String, Object>>> list(HttpSession session) {
         requireAdmin(session);
         return ApiResponse.ok(userAdminRepository.listUsers(), "User list");
     }
 
-    /**
-     * Creates a new user through the admin API.
-     *
-     * @param session current HTTP session containing an ADMIN user
-     * @param username unique username
-     * @param password raw password value used by the current project
-     * @param fullName display name
-     * @param email unique email address
-     * @return API response containing the created user
-     */
-    @RequestMapping(method = RequestMethod.POST)
+        @RequestMapping(method = RequestMethod.POST)
     public ApiResponse<Map<String, Object>> create(
             HttpSession session,
             @RequestParam("username") String username,
@@ -55,18 +35,14 @@ public class UserApiController {
             @RequestParam("fullName") String fullName,
             @RequestParam("email") String email) {
         requireAdmin(session);
+        if (password == null || password.trim().isEmpty()) {
+            password = "12345";
+        }
         long id = userAdminRepository.createUser(username, password, fullName, email);
         return ApiResponse.ok(userAdminRepository.getUser(id), "User created");
     }
 
-    /**
-     * Returns one user's details for admin management.
-     *
-     * @param id user id
-     * @param session current HTTP session containing an ADMIN user
-     * @return API response containing user details
-     */
-    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+        @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ApiResponse<Map<String, Object>> detail(@PathVariable("id") long id, HttpSession session) {
         requireAdmin(session);
         Map<String, Object> user = userAdminRepository.getUser(id);
@@ -76,16 +52,7 @@ public class UserApiController {
         return ApiResponse.ok(user, "User detail");
     }
 
-    /**
-     * Updates a user's basic profile fields through the API.
-     *
-     * @param id user id
-     * @param session current HTTP session containing an ADMIN user
-     * @param fullName updated full name
-     * @param email updated email address
-     * @return empty success response
-     */
-    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
+        @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public ApiResponse<Object> update(
             @PathVariable("id") long id,
             HttpSession session,
@@ -96,15 +63,7 @@ public class UserApiController {
         return ApiResponse.ok(null, "User updated");
     }
 
-    /**
-     * Updates a user's ACTIVE/INACTIVE status.
-     *
-     * @param id user id
-     * @param session current HTTP session containing an ADMIN user
-     * @param status requested status value
-     * @return empty success response
-     */
-    @RequestMapping(value = "/{id}/status", method = RequestMethod.PATCH)
+        @RequestMapping(value = "/{id}/status", method = RequestMethod.PATCH)
     public ApiResponse<Object> patchStatus(
             @PathVariable("id") long id,
             HttpSession session,
@@ -119,15 +78,7 @@ public class UserApiController {
         return ApiResponse.ok(null, "User status updated");
     }
 
-    /**
-     * Assigns a role to a user through the admin API.
-     *
-     * @param id user id
-     * @param session current HTTP session containing an ADMIN user
-     * @param role role name to assign
-     * @return empty success response
-     */
-    @RequestMapping(value = "/{id}/roles", method = RequestMethod.POST)
+        @RequestMapping(value = "/{id}/roles", method = RequestMethod.POST)
     public ApiResponse<Object> addRole(
             @PathVariable("id") long id,
             HttpSession session,
@@ -138,15 +89,7 @@ public class UserApiController {
         return ApiResponse.ok(null, "Role assigned");
     }
 
-    /**
-     * Removes a role from a user through the admin API.
-     *
-     * @param id user id
-     * @param session current HTTP session containing an ADMIN user
-     * @param role role name to remove
-     * @return empty success response
-     */
-    @RequestMapping(value = "/{id}/roles", method = RequestMethod.DELETE)
+        @RequestMapping(value = "/{id}/roles", method = RequestMethod.DELETE)
     public ApiResponse<Object> removeRole(
             @PathVariable("id") long id,
             HttpSession session,

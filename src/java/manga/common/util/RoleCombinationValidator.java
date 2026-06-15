@@ -6,10 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Validates BR-SYS role-combination rules for user accounts.
- * The backend and frontend both mirror these rules to prevent invalid role sets.
- */
 public final class RoleCombinationValidator {
 
     private static final Set<String> DUAL_ROLE_ALLOWED = new HashSet<String>(
@@ -18,13 +14,7 @@ public final class RoleCombinationValidator {
     private RoleCombinationValidator() {
     }
 
-    /**
-     * Validates a list of roles against allowed account combinations.
-     *
-     * @param roles role names submitted for a user
-     * @return nothing; throws an exception when the combination is invalid
-     */
-    public static void validate(List<String> roles) {
+        public static void validate(List<String> roles) {
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("Select at least one role");
         }
