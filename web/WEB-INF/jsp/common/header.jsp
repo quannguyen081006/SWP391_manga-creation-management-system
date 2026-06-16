@@ -63,6 +63,7 @@
     String pageName = "";
     if (uri.contains("/dashboard")) pageName = "Dashboard";
     else if (uri.contains("/notifications")) pageName = "Notifications";
+    else if (uri.contains("/settings")) pageName = "Settings";
     else if (uri.contains("/proposals")) pageName = "Proposals";
     else if (uri.contains("/series")) pageName = "Series";
     else if (uri.contains("/chapters")) pageName = "Chapters";

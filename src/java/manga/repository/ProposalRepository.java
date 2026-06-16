@@ -24,10 +24,12 @@ public class ProposalRepository {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private manga.service.ProposalSettingsService proposalSettingsService;
+
     private Boolean boardVotingSchemaReady;
 
     private static final String BOARD_REVOTE_NOTE = "Board vote tied across approve, revise, and reject. Revote requested.";
-    private static final String BOARD_QUORUM_NOT_MET_NOTE = "Board voting round closed without the minimum 3 valid votes. A new round was opened.";
     private static final String BOARD_VOTE_ACTIONS = "'APPROVED','REVISE_REQUESTED','REJECTED'";
     private static final String CURRENT_BOARD_ROUND_ID =
             "(SELECT TOP 1 br.id FROM ProposalBoardRound br WHERE br.proposalId = p.id "
@@ -186,7 +188,7 @@ public class ProposalRepository {
                 if (p.getMangakaId() != actor.getId() || !isEditableStatus(p.getStatus())) {
                     throw new IllegalArgumentException("Only editable proposal owner can submit");
                 }
-                if (p.getSubmitAttemptCount() >= 2) {
+                if (p.getSubmitAttemptCount() >= proposalSettingsService.getMaxSubmitAttempts()) {
                     throw new IllegalArgumentException("Proposal submit attempt limit reached");
                 }
                 long editorId = findLeastAssignedTantouEditor(conn);
@@ -205,6 +207,7 @@ public class ProposalRepository {
                 }
                 insertHistory(conn, proposalId, actor, action, "Submitted to Tantou Editor review.", nextAttempt);
                 insertSystemHistory(conn, proposalId, "ASSIGNED_EDITOR", "Auto-assigned Tantou Editor #" + editorId + ".", nextAttempt);
+                notifyProposalSubmittedToTantou(conn, p, editorId, nextAttempt);
                 conn.commit();
             } catch (Exception ex) {
                 conn.rollback();
@@ -233,12 +236,15 @@ public class ProposalRepository {
                     insertHistory(conn, proposalId, actor, "APPROVED", note, p.getSubmitAttemptCount());
                     openBoardVotingRound(conn, proposalId, p.getSubmitAttemptCount());
                     notifyBoardReviewOpened(conn, p);
+                    notifyProposalMovedToBoardReview(conn, p);
                 } else if ("REJECT".equals(decision)) {
                     updateProposalStatus(conn, proposalId, "REJECTED", true);
                     insertHistory(conn, proposalId, actor, "REJECTED", note, p.getSubmitAttemptCount());
+                    notifyProposalRejectedByTantou(conn, p, note);
                 } else if ("REVISE".equals(decision)) {
                     updateProposalStatus(conn, proposalId, "REVISION_REQUESTED", false);
                     insertHistory(conn, proposalId, actor, "REVISE_REQUESTED", note, p.getSubmitAttemptCount());
+                    notifyProposalRevisionRequestedByTantou(conn, p, note);
                 } else {
                     throw new IllegalArgumentException("Review decision must be APPROVE, REJECT, or REVISE");
                 }
@@ -856,8 +862,10 @@ public class ProposalRepository {
             ps.executeUpdate();
         }
 
+        int minimumVoteQuorum = proposalSettingsService.getMinimumVoteQuorum();
         insertSystemHistory(conn, proposalId, "UPDATED",
-                "Editorial Board voting round #" + roundNumber + " opened for 3 days. Minimum quorum is 3 valid votes.",
+                "Editorial Board voting round #" + roundNumber + " opened for 3 days. Minimum quorum is "
+                + minimumVoteQuorum + " valid votes.",
                 attempt);
         return roundId;
     }
@@ -898,15 +906,21 @@ public class ProposalRepository {
                 totalVotes = rs.getInt("totalVotes");
             }
         }
-        if (totalVotes < 3) {
-            insertSystemHistory(conn, proposal.getId(), "UPDATED", BOARD_QUORUM_NOT_MET_NOTE, proposal.getSubmitAttemptCount());
+        int minimumVoteQuorum = proposalSettingsService.getMinimumVoteQuorum();
+        if (totalVotes < minimumVoteQuorum) {
+            insertSystemHistory(conn, proposal.getId(), "UPDATED",
+                    "Board voting round closed without the minimum " + minimumVoteQuorum
+                    + " valid votes. A new round was opened.",
+                    proposal.getSubmitAttemptCount());
             openBoardVotingRound(conn, proposal.getId(), proposal.getSubmitAttemptCount());
+            notifyBoardRevoteOpened(conn, proposal, "The previous board voting round did not reach the minimum quorum.");
             return;
         }
 
         if (approveVotes == 1 && reviseVotes == 1 && rejectVotes == 1) {
             insertSystemHistory(conn, proposal.getId(), "UPDATED", BOARD_REVOTE_NOTE, proposal.getSubmitAttemptCount());
             openBoardVotingRound(conn, proposal.getId(), proposal.getSubmitAttemptCount());
+            notifyBoardRevoteOpened(conn, proposal, "The previous board voting round ended in a tie.");
             return;
         }
 
@@ -919,12 +933,33 @@ public class ProposalRepository {
             updateProposalStatus(conn, proposal.getId(), "REVISION_REQUESTED", false);
             insertSystemHistory(conn, proposal.getId(), "REVISE_REQUESTED", "Editorial Board requested revisions before publication.", proposal.getSubmitAttemptCount());
             notifyProposalRevisionRequested(conn, proposal);
+            notifyProposalBoardOutcomeForTantou(conn, proposal, "revision requested");
         } else if (rejectVotes > approveVotes && rejectVotes > reviseVotes) {
             updateProposalStatus(conn, proposal.getId(), "REJECTED", true);
             insertSystemHistory(conn, proposal.getId(), "REJECTED", "Editorial Board rejected publication.", proposal.getSubmitAttemptCount());
+            notifyProposalRejectedByBoard(conn, proposal);
+            notifyProposalBoardOutcomeForTantou(conn, proposal, "rejected");
         } else {
             insertSystemHistory(conn, proposal.getId(), "UPDATED", BOARD_REVOTE_NOTE, proposal.getSubmitAttemptCount());
             openBoardVotingRound(conn, proposal.getId(), proposal.getSubmitAttemptCount());
+            notifyBoardRevoteOpened(conn, proposal, "The previous board voting round did not produce a clear result.");
+        }
+    }
+
+    private void notifyProposalSubmittedToTantou(Connection conn, Proposal proposal, long editorId, int attempt) throws SQLException {
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "VALUES (?, 'PROPOSAL_SUBMITTED_TO_TANTOU', 'Proposal assigned for review', ?, ?, ?, 'PROPOSAL', 0, GETDATE())";
+        String message = "Proposal \"" + proposal.getTitle() + "\" was submitted and assigned to you for Tantou review.";
+        if (attempt > 1) {
+            message = "Proposal \"" + proposal.getTitle() + "\" was resubmitted and assigned to you for Tantou review.";
+        }
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, editorId);
+            ps.setString(2, message);
+            ps.setString(3, "/main/proposals/" + proposal.getId());
+            ps.setLong(4, proposal.getId());
+            ps.executeUpdate();
         }
     }
 
@@ -964,6 +999,103 @@ public class ProposalRepository {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, message);
             ps.setString(2, "/main/proposals/" + proposal.getId());
+            ps.setLong(3, proposal.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void notifyProposalMovedToBoardReview(Connection conn, Proposal proposal) throws SQLException {
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "VALUES (?, 'PROPOSAL_MOVED_TO_BOARD_REVIEW', 'Proposal moved to board review', ?, ?, ?, 'PROPOSAL', 0, GETDATE())";
+        String message = "Proposal \"" + proposal.getTitle() + "\" passed Tantou review and moved to Editorial Board review.";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, proposal.getMangakaId());
+            ps.setString(2, message);
+            ps.setString(3, "/main/proposals/" + proposal.getId());
+            ps.setLong(4, proposal.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void notifyProposalRejectedByTantou(Connection conn, Proposal proposal, String note) throws SQLException {
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "VALUES (?, 'PROPOSAL_TANTOU_REJECTED', 'Proposal rejected', ?, ?, ?, 'PROPOSAL', 0, GETDATE())";
+        String message = "Tantou Editor rejected proposal \"" + proposal.getTitle() + "\".";
+        if (note != null && !note.trim().isEmpty()) {
+            message += " Reason: " + note.trim();
+        }
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, proposal.getMangakaId());
+            ps.setString(2, message);
+            ps.setString(3, "/main/proposals/" + proposal.getId());
+            ps.setLong(4, proposal.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void notifyProposalRevisionRequestedByTantou(Connection conn, Proposal proposal, String note) throws SQLException {
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "VALUES (?, 'PROPOSAL_TANTOU_REVISION_REQUESTED', 'Revision requested', ?, ?, ?, 'PROPOSAL', 0, GETDATE())";
+        String message = "Tantou Editor requested revisions for proposal \"" + proposal.getTitle() + "\".";
+        if (note != null && !note.trim().isEmpty()) {
+            message += " Note: " + note.trim();
+        }
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, proposal.getMangakaId());
+            ps.setString(2, message);
+            ps.setString(3, "/main/proposals/" + proposal.getId() + "/edit");
+            ps.setLong(4, proposal.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void notifyProposalRejectedByBoard(Connection conn, Proposal proposal) throws SQLException {
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "VALUES (?, 'PROPOSAL_BOARD_REJECTED', 'Proposal rejected by board', ?, ?, ?, 'PROPOSAL', 0, GETDATE())";
+        String message = "Editorial Board rejected proposal \"" + proposal.getTitle() + "\".";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, proposal.getMangakaId());
+            ps.setString(2, message);
+            ps.setString(3, "/main/proposals/" + proposal.getId());
+            ps.setLong(4, proposal.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void notifyProposalBoardOutcomeForTantou(Connection conn, Proposal proposal, String outcome) throws SQLException {
+        if (proposal.getAssignedEditorId() == null) {
+            return;
+        }
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "VALUES (?, 'PROPOSAL_BOARD_OUTCOME_FOR_TANTOU', 'Board review completed', ?, ?, ?, 'PROPOSAL', 0, GETDATE())";
+        String message = "Editorial Board " + outcome + " proposal \"" + proposal.getTitle() + "\".";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, proposal.getAssignedEditorId().longValue());
+            ps.setString(2, message);
+            ps.setString(3, "/main/proposals/" + proposal.getId());
+            ps.setLong(4, proposal.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void notifyBoardRevoteOpened(Connection conn, Proposal proposal, String reason) throws SQLException {
+        String sql =
+            "INSERT INTO Notification (userId, type, title, message, viewUrl, referenceId, referenceType, isRead, createdAt) "
+            + "SELECT u.id, 'PROPOSAL_BOARD_REVOTE_OPENED', 'New board voting round opened', "
+            + "?, ?, ?, 'PROPOSAL', 0, GETDATE() "
+            + "FROM [User] u "
+            + "JOIN UserRole ur ON ur.userId = u.id "
+            + "JOIN [Role] r ON r.id = ur.roleId "
+            + "WHERE u.status = 'ACTIVE' AND r.name = 'EDITORIAL_BOARD'";
+        String message = reason + " A new voting round is open for proposal \"" + proposal.getTitle() + "\".";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, message);
+            ps.setString(2, "/main/proposals/" + proposal.getId() + "/vote");
             ps.setLong(3, proposal.getId());
             ps.executeUpdate();
         }

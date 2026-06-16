@@ -22,7 +22,7 @@
         <p><strong>Genre:</strong> ${proposal.genre}</p>
         <p><strong>Status:</strong> <span class="chip">${proposal.status}</span></p>
         <p><strong>Approximate Chapter:</strong> ${proposal.approximateChapter}</p>
-        <p><strong>Submit Attempts:</strong> ${proposal.submitAttemptCount}/2</p>
+        <p><strong>Submit Attempts:</strong> ${proposal.submitAttemptCount}/${maxSubmitAttempts}</p>
         <p><strong>Assigned Tantou Editor:</strong> <c:out value="${proposal.assignedEditorId}" default="Not assigned" /></p>
         <div class="proposal-vote-summary ${proposal.boardRoundStatus == 'OPEN' ? 'is-open' : ''}">
             <div class="proposal-vote-summary-head">
@@ -50,7 +50,7 @@
                         <div>
                             <span class="vote-label">Votes Cast</span>
                             <strong>${proposal.boardTotalVotes}/${proposal.boardEligibleVoterCount}</strong>
-                            <small>Minimum quorum: 3</small>
+                            <small>Minimum quorum: ${minimumVoteQuorum}</small>
                         </div>
                         <div>
                             <span class="vote-label">Window</span>
@@ -77,7 +77,7 @@
                         <span class="vote-breakdown-reject">Reject <strong>${proposal.boardRejectVotes}</strong></span>
                     </div>
                     <p class="proposal-vote-note">
-                        3 votes is only the minimum quorum. The result is decided when the 3-day window closes or when every eligible board member in this round has voted.
+                        ${minimumVoteQuorum} votes is only the minimum quorum. The result is decided when the 3-day window closes or when every eligible board member in this round has voted.
                     </p>
                     <c:if test="${not empty boardVoters}">
                         <div class="board-voter-list">

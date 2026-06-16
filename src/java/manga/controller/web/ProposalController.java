@@ -36,6 +36,9 @@ public class ProposalController {
         model.addAttribute("isMangaka", user.hasRole("MANGAKA"));
         model.addAttribute("isTantou", user.hasRole("TANTOU_EDITOR"));
         model.addAttribute("isBoard", user.hasRole("EDITORIAL_BOARD"));
+        model.addAttribute("isAdmin", user.hasRole("ADMIN"));
+        model.addAttribute("maxSubmitAttempts", proposalService.getMaxSubmitAttempts());
+        model.addAttribute("minimumVoteQuorum", proposalService.getMinimumVoteQuorum());
         return "proposal/list";
     }
 
@@ -92,9 +95,11 @@ public class ProposalController {
         model.addAttribute("user", user);
         boolean editableStatus = "DRAFT".equalsIgnoreCase(proposal.getStatus()) || "REVISION_REQUESTED".equalsIgnoreCase(proposal.getStatus());
         boolean canEditDraft = user.hasRole("MANGAKA") && proposal.getMangakaId() == user.getId()
-                && editableStatus && proposal.getSubmitAttemptCount() < ProposalService.MAX_SUBMIT_ATTEMPTS;
+                && editableStatus && proposal.getSubmitAttemptCount() < proposalService.getMaxSubmitAttempts();
         model.addAttribute("canEdit", canEditDraft);
         model.addAttribute("canSubmit", canEditDraft);
+        model.addAttribute("maxSubmitAttempts", proposalService.getMaxSubmitAttempts());
+        model.addAttribute("minimumVoteQuorum", proposalService.getMinimumVoteQuorum());
         model.addAttribute("canReview", user.hasRole("TANTOU_EDITOR") && proposal.getAssignedEditorId() != null
                 && proposal.getAssignedEditorId().longValue() == user.getId() && "UNDER_REVIEW".equalsIgnoreCase(proposal.getStatus()));
         model.addAttribute("isTantou", user.hasRole("TANTOU_EDITOR"));

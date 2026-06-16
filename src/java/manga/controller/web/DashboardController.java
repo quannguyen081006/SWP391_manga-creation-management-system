@@ -92,6 +92,7 @@ public class DashboardController {
         model.addAttribute("pendingManuscripts", pendingManuscripts);
         model.addAttribute("activeProposal", activeProposal);
         model.addAttribute("inProgressChapters", inProgressChapters);
+        model.addAttribute("maxSubmitAttempts", proposalService.getMaxSubmitAttempts());
 
         return "dashboard/index";
     }

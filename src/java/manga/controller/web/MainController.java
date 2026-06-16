@@ -244,6 +244,9 @@ public class MainController {
         model.addAttribute("isMangaka", user.hasRole("MANGAKA"));
         model.addAttribute("isTantou", user.hasRole("TANTOU_EDITOR"));
         model.addAttribute("isBoard", user.hasRole("EDITORIAL_BOARD"));
+        model.addAttribute("isAdmin", user.hasRole("ADMIN"));
+        model.addAttribute("maxSubmitAttempts", proposalService.getMaxSubmitAttempts());
+        model.addAttribute("minimumVoteQuorum", proposalService.getMinimumVoteQuorum());
         return "proposal/list";
     }
 
@@ -309,9 +312,11 @@ public class MainController {
         boolean canEditDraft = user.hasRole("MANGAKA")
                 && proposal.getMangakaId() == user.getId()
                 && editableStatus
-                && proposal.getSubmitAttemptCount() < ProposalService.MAX_SUBMIT_ATTEMPTS;
+                && proposal.getSubmitAttemptCount() < proposalService.getMaxSubmitAttempts();
         model.addAttribute("canEdit", canEditDraft);
         model.addAttribute("canSubmit", canEditDraft);
+        model.addAttribute("maxSubmitAttempts", proposalService.getMaxSubmitAttempts());
+        model.addAttribute("minimumVoteQuorum", proposalService.getMinimumVoteQuorum());
         model.addAttribute("canReview", user.hasRole("TANTOU_EDITOR")
                 && proposal.getAssignedEditorId() != null
                 && proposal.getAssignedEditorId().longValue() == user.getId()

@@ -12,6 +12,7 @@ import manga.repository.UserAdminRepository;
 import manga.service.AnnotationServiceV2;
 import manga.service.ManuscriptVersionService;
 import manga.service.NotificationService;
+import manga.service.ProposalSettingsService;
 import manga.service.chaptertask.ChapterService;
 import manga.service.chaptertask.PageTaskService;
 import manga.service.ProposalService;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/main")
@@ -86,17 +88,21 @@ public class ModuleWebController {
     @Autowired
     private manga.service.ReviewTaskService reviewTaskService;
 
+    @Autowired
+    private ProposalSettingsService proposalSettingsService;
+
     @RequestMapping(value = "/proposals/{id}/edit", method = RequestMethod.GET)
     public String proposalEditPage(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
         Proposal proposal = proposalService.getDetail(user, id);
         boolean editableStatus = "DRAFT".equalsIgnoreCase(proposal.getStatus()) || "REVISION_REQUESTED".equalsIgnoreCase(proposal.getStatus());
         if (!user.hasRole("MANGAKA") || proposal.getMangakaId() != user.getId()
-                || !editableStatus || proposal.getSubmitAttemptCount() >= ProposalService.MAX_SUBMIT_ATTEMPTS) {
+                || !editableStatus || proposal.getSubmitAttemptCount() >= proposalService.getMaxSubmitAttempts()) {
             throw new IllegalArgumentException("Only editable proposal owner can edit proposal");
         }
         model.addAttribute("proposal", proposal);
         model.addAttribute("genres", proposalService.listGenres());
+        model.addAttribute("lockIdentityFields", "DRAFT".equalsIgnoreCase(proposal.getStatus()) && proposal.getSubmitAttemptCount() == 0);
         return "proposal/edit";
     }
 
@@ -121,8 +127,45 @@ public class ModuleWebController {
             model.addAttribute("proposal", proposal);
             model.addAttribute("error", ex.getMessage());
             model.addAttribute("genres", proposalService.listGenres());
+            model.addAttribute("lockIdentityFields", "DRAFT".equalsIgnoreCase(proposal.getStatus()) && proposal.getSubmitAttemptCount() == 0);
             return "proposal/edit";
         }
+    }
+
+    @RequestMapping(value = "/settings/proposals", method = RequestMethod.GET)
+    public String proposalSettings(HttpSession session, Model model) {
+        AuthenticatedUser user = requireUser(session);
+        requireAdmin(user);
+        model.addAttribute("settings", proposalSettingsService.getSettings());
+        return "settings/proposals";
+    }
+
+    @RequestMapping(value = "/settings/proposals", method = RequestMethod.POST)
+    public String proposalSettingsSave(
+            HttpSession session,
+            @RequestParam("maxSubmitAttempts") Integer maxSubmitAttempts,
+            @RequestParam("minimumVoteQuorum") Integer minimumVoteQuorum,
+            @RequestParam(value = "returnTo", required = false) String returnTo,
+            RedirectAttributes redirectAttributes,
+            Model model) {
+        AuthenticatedUser user = requireUser(session);
+        try {
+            requireAdmin(user);
+            proposalSettingsService.updateSettings(maxSubmitAttempts.intValue(), minimumVoteQuorum.intValue());
+            if ("proposals".equalsIgnoreCase(returnTo)) {
+                redirectAttributes.addFlashAttribute("success", "Proposal settings updated successfully");
+                return "redirect:/main/proposals";
+            }
+            model.addAttribute("success", "Proposal settings updated successfully");
+        } catch (RuntimeException ex) {
+            if ("proposals".equalsIgnoreCase(returnTo)) {
+                redirectAttributes.addFlashAttribute("error", ex.getMessage());
+                return "redirect:/main/proposals";
+            }
+            model.addAttribute("error", ex.getMessage());
+        }
+        model.addAttribute("settings", proposalSettingsService.getSettings());
+        return "settings/proposals";
     }
 
     private UploadInfo saveUpload(HttpServletRequest request, String fieldName) throws IOException, ServletException {

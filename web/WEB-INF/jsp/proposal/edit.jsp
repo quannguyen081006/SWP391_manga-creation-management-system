@@ -16,10 +16,13 @@
 <div class="section-card">
     <form class="form-grid" method="post" action="${pageContext.request.contextPath}/main/proposals/${proposal.id}/edit" enctype="multipart/form-data">
         <label>Title</label>
-        <input type="text" name="title" value="${proposal.title}" required />
+        <input type="text" name="title" value="${proposal.title}" required ${lockIdentityFields ? 'readonly' : ''} />
 
         <label>Genre</label>
-        <select name="genre" required>
+        <c:if test="${lockIdentityFields}">
+            <input type="hidden" name="genre" value="${proposal.genre}" />
+        </c:if>
+        <select name="genre" required ${lockIdentityFields ? 'disabled' : ''}>
             <c:forEach items="${genres}" var="g">
                 <option value="${g}" ${g == proposal.genre ? 'selected' : ''}>${g}</option>
             </c:forEach>

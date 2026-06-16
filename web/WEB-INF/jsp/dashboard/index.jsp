@@ -66,7 +66,7 @@
             <p class="page-sub dashboard-proposal-genre">${activeProposal.genre}</p>
             <div class="inline-meta">
                 <span>Status: ${activeProposal.status}</span>
-                <span>Submit attempt ${activeProposal.submitAttemptCount}/2</span>
+                <span>Submit attempt ${activeProposal.submitAttemptCount}/${maxSubmitAttempts}</span>
             </div>
             <div class="dashboard-card-action"><a class="btn" href="${pageContext.request.contextPath}/main/proposals/${activeProposal.id}">View Details</a></div>
         </c:when>

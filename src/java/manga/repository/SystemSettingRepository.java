@@ -1,0 +1,136 @@
+package manga.repository;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class SystemSettingRepository {
+
+    public static final String MAX_SUBMIT_ATTEMPTS = "proposal.maxSubmitAttempts";
+    public static final String MINIMUM_VOTE_QUORUM = "proposal.minimumVoteQuorum";
+
+    @Autowired
+    private DataSource dataSource;
+
+    private Boolean settingsTableReady;
+
+    public int getInt(String key, int defaultValue) {
+        try (Connection conn = dataSource.getConnection()) {
+            ensureSettingsTable(conn);
+            String sql = "SELECT settingValue FROM SystemSetting WHERE settingKey = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, key);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return defaultValue;
+                    }
+                    String value = rs.getString(1);
+                    try {
+                        return Integer.parseInt(value);
+                    } catch (NumberFormatException ex) {
+                        return defaultValue;
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            return defaultValue;
+        }
+    }
+
+    public void setInt(String key, int value) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                ensureSettingsTable(conn);
+                upsertInt(conn, key, value);
+                conn.commit();
+            } catch (Exception ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot save system setting", ex);
+        }
+    }
+
+    public void setProposalSettings(int maxSubmitAttempts, int minimumVoteQuorum) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                ensureSettingsTable(conn);
+                ensureSubmitAttemptConstraint(conn, maxSubmitAttempts);
+                upsertInt(conn, MAX_SUBMIT_ATTEMPTS, maxSubmitAttempts);
+                upsertInt(conn, MINIMUM_VOTE_QUORUM, minimumVoteQuorum);
+                conn.commit();
+            } catch (Exception ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot save proposal settings", ex);
+        }
+    }
+
+    private void upsertInt(Connection conn, String key, int value) throws SQLException {
+        String updateSql = "UPDATE SystemSetting SET settingValue = ?, updatedAt = GETDATE() WHERE settingKey = ?";
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            ps.setString(1, String.valueOf(value));
+            ps.setString(2, key);
+            if (ps.executeUpdate() > 0) {
+                return;
+            }
+        }
+        String insertSql = "INSERT INTO SystemSetting (settingKey, settingValue, updatedAt) VALUES (?, ?, GETDATE())";
+        try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+            ps.setString(1, key);
+            ps.setString(2, String.valueOf(value));
+            ps.executeUpdate();
+        }
+    }
+
+    private void ensureSettingsTable(Connection conn) throws SQLException {
+        if (Boolean.TRUE.equals(settingsTableReady)) {
+            return;
+        }
+        String sql = "IF OBJECT_ID('dbo.SystemSetting', 'U') IS NULL "
+                + "CREATE TABLE dbo.SystemSetting ("
+                + "settingKey varchar(100) NOT NULL PRIMARY KEY, "
+                + "settingValue varchar(255) NOT NULL, "
+                + "updatedAt datetime NOT NULL DEFAULT GETDATE())";
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate(sql);
+        }
+        settingsTableReady = Boolean.TRUE;
+    }
+
+    private void ensureSubmitAttemptConstraint(Connection conn, int maxSubmitAttempts) throws SQLException {
+        int currentMax = 0;
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT ISNULL(MAX(submitAttemptCount), 0) FROM Proposal")) {
+            if (rs.next()) {
+                currentMax = rs.getInt(1);
+            }
+        }
+        if (maxSubmitAttempts < currentMax) {
+            throw new IllegalArgumentException("Max submit attempts cannot be lower than existing proposal attempts: " + currentMax);
+        }
+        String sql = "IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Proposal_submitAttempts') "
+                + "ALTER TABLE dbo.Proposal DROP CONSTRAINT CK_Proposal_submitAttempts";
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate(sql);
+            st.executeUpdate("ALTER TABLE dbo.Proposal WITH CHECK ADD CONSTRAINT CK_Proposal_submitAttempts "
+                    + "CHECK (submitAttemptCount >= 0 AND submitAttemptCount <= " + maxSubmitAttempts + ")");
+            st.executeUpdate("ALTER TABLE dbo.Proposal CHECK CONSTRAINT CK_Proposal_submitAttempts");
+        }
+    }
+}

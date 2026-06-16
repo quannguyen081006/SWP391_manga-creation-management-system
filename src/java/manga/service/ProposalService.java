@@ -15,14 +15,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProposalService {
 
-    public static final int MAX_SUBMIT_ATTEMPTS = 2;
-
     private static final List<String> GENRES = Arrays.asList(
             "Action", "Adventure", "Romance", "Comedy", "Fantasy",
             "Horror", "Slice of Life", "Mystery", "Drama");
 
     @Autowired
     private ProposalRepository proposalRepository;
+
+    @Autowired
+    private ProposalSettingsService proposalSettingsService;
 
     public List<String> listGenres() {
         return GENRES;
@@ -86,6 +87,10 @@ public class ProposalService {
             throw new IllegalArgumentException("Proposal not found");
         }
         boolean hasExistingFile = !isBlank(p.getSampleFilePath());
+        if ("DRAFT".equalsIgnoreCase(p.getStatus()) && p.getSubmitAttemptCount() == 0) {
+            title = p.getTitle();
+            genre = p.getGenre();
+        }
         validateProposalContent(title, genre, synopsis, hasExistingFile ? "existing" : sampleFilePath, approximateChapter, true);
         proposalRepository.updateDraft(user, proposalId, title.trim(), genre.trim(), synopsis.trim(),
                 sampleFilePath, safeTrim(originalFileName), approximateChapter.intValue());
@@ -100,7 +105,7 @@ public class ProposalService {
         if (proposalRepository.hasActiveProposal(user.getId(), proposalId)) {
             throw new IllegalArgumentException("You already have an active proposal");
         }
-        if (p.getSubmitAttemptCount() >= MAX_SUBMIT_ATTEMPTS) {
+        if (p.getSubmitAttemptCount() >= getMaxSubmitAttempts()) {
             throw new IllegalArgumentException("Proposal submit attempt limit reached");
         }
         if (isBlank(p.getSampleFilePath()) || p.getApproximateChapter() == null) {
@@ -222,6 +227,14 @@ public class ProposalService {
             throw new IllegalArgumentException("You do not have permission to view proposal history");
         }
         return proposalRepository.listHistory(proposalId);
+    }
+
+    public int getMaxSubmitAttempts() {
+        return proposalSettingsService.getMaxSubmitAttempts();
+    }
+
+    public int getMinimumVoteQuorum() {
+        return proposalSettingsService.getMinimumVoteQuorum();
     }
 
     private void validateProposalContent(String title, String genre, String synopsis, String sampleFilePath,

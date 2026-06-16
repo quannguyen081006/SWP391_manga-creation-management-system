@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <title>Proposals</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/styles.css?v=board-vote-ui-2" />
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/proposal.css" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/proposal.css?v=proposal-settings-2" />
 </head>
 <body>
 <jsp:include page="../common/header.jsp" />
@@ -18,6 +18,51 @@
     </div>
 </c:if>
 
+<c:if test="${isAdmin}">
+    <section id="proposal-settings" class="section-card settings-panel proposal-settings-panel">
+        <div class="proposal-settings-head">
+            <div class="settings-page-icon" aria-hidden="true"></div>
+            <div>
+                <h2>Proposal Settings</h2>
+                <p>Submission and voting limits.</p>
+            </div>
+        </div>
+        <form class="settings-form" method="post" action="${pageContext.request.contextPath}/main/settings/proposals">
+            <input type="hidden" name="returnTo" value="proposals" />
+            <div class="settings-grid">
+                <label class="setting-control-card" for="maxSubmitAttempts">
+                    <span class="setting-control-icon setting-control-icon-resubmit" aria-hidden="true"></span>
+                    <span class="setting-control-copy">
+                        <span class="setting-control-title">Submit Attempts</span>
+                        <span class="setting-control-desc">Max times a proposal can be submitted.</span>
+                    </span>
+                    <span class="setting-number-wrap">
+                        <input id="maxSubmitAttempts" type="number" name="maxSubmitAttempts" min="1" max="10" value="${maxSubmitAttempts}" required />
+                        <span class="setting-number-unit">attempts</span>
+                    </span>
+                </label>
+
+                <label class="setting-control-card" for="minimumVoteQuorum">
+                    <span class="setting-control-icon setting-control-icon-quorum" aria-hidden="true"></span>
+                    <span class="setting-control-copy">
+                        <span class="setting-control-title">Vote Quorum</span>
+                        <span class="setting-control-desc">Min Board votes to resolve.</span>
+                    </span>
+                    <span class="setting-number-wrap">
+                        <input id="minimumVoteQuorum" type="number" name="minimumVoteQuorum" min="1" max="20" value="${minimumVoteQuorum}" required />
+                        <span class="setting-number-unit">votes</span>
+                    </span>
+                </label>
+            </div>
+
+            <div class="settings-actions">
+                <button class="btn primary" type="submit">Save</button>
+            </div>
+        </form>
+    </section>
+</c:if>
+
+<c:if test="${not empty success}"><div class="alert success">${success}</div></c:if>
 <c:if test="${not empty error}"><div class="alert error">${error}</div></c:if>
 
 <div class="section-card">
@@ -57,7 +102,7 @@
                                     </div>
                                     <div class="compact-vote-meta">
                                         <span>Round #${p.boardRoundNumber}</span>
-                                        <span>Min quorum 3</span>
+                                        <span>Min quorum ${minimumVoteQuorum}</span>
                                     </div>
                                     <c:if test="${p.boardRoundStatus == 'OPEN'}">
                                         <div class="compact-vote-deadline">
