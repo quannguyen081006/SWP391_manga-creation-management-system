@@ -28,14 +28,46 @@
 .metric-good { color:#27ae60; font-weight:700; }
 .metric-warn { color:#f39c12; font-weight:700; }
 .metric-bad { color:#e74c3c; font-weight:700; }
-.btn-toggle-tasks { background:none; border:none; cursor:pointer; font-size:14px; padding:2px 6px; }
+.btn-toggle-tasks { width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; background:#fff; border:1px solid #cbd5e1; border-radius:5px; cursor:pointer; font-size:16px; line-height:1; padding:0; }
+.btn-toggle-tasks:hover { border-color:#2563eb; color:#2563eb; }
 .salary-toggle-column { width:32px; }
 .task-detail-row { display:none; }
 .task-detail-row.is-open { display:table-row; }
-.task-detail-row > td { background:#f9fafb; }
-.salary-task-table { margin:0; }
+.task-detail-row > td { background:#f8fafc; padding:12px; }
+.salary-deduction-breakdown { margin-top:6px; font-size:12px; font-weight:500; }
+.salary-deduction-breakdown span { display:block; }
+.salary-task-list { display:grid; gap:10px; }
+.salary-task-card { overflow:hidden; background:#fff; border:1px solid #dbe3ee; border-radius:10px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+.salary-task-trigger { width:100%; display:grid; grid-template-columns:28px minmax(230px,1fr) auto minmax(120px,auto); gap:12px; align-items:center; padding:14px 16px; border:0; background:#fff; color:#172033; text-align:left; cursor:pointer; font:inherit; }
+.salary-task-trigger:hover { background:#f8fbff; }
+.salary-task-trigger[aria-expanded="true"] { background:#f3f7fc; }
+.salary-task-chevron { width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #b8c5d6; border-radius:6px; color:#315b8a; background:#fff; font-size:16px; font-weight:700; }
+.salary-task-main { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.salary-task-main strong { font-size:14px; color:#12213a; }
+.salary-task-main span { overflow:hidden; color:#64748b; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.salary-task-status { padding:5px 9px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+.salary-task-status.is-good { color:#15703d; background:#e8f7ee; }
+.salary-task-status.is-bad { color:#b42318; background:#fff0ee; }
+.salary-task-money { color:#12213a; font-weight:800; text-align:right; white-space:nowrap; }
+.salary-task-meta { display:flex; align-items:center; gap:8px 18px; flex-wrap:wrap; padding:0 16px 12px 56px; color:#64748b; font-size:12px; }
+.salary-task-meta strong { color:#334155; }
+.salary-task-penalty { color:#b42318; font-weight:700; }
+.salary-task-clean { color:#15703d; font-weight:700; }
+.salary-page-panel { display:none; margin:0 16px 16px 56px; overflow:hidden; border:1px solid #dbe3ee; border-radius:8px; }
+.salary-page-panel.is-open { display:block; }
+.salary-page-grid { display:grid; grid-template-columns:minmax(70px,.65fr) minmax(130px,1fr) minmax(150px,1fr) minmax(130px,.8fr); gap:14px; align-items:center; padding:10px 14px; border-top:1px solid #edf1f6; color:#334155; font-size:12px; }
+.salary-page-grid:first-child { border-top:0; }
+.salary-page-grid-head { background:#f6f8fb; color:#64748b; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; }
+.salary-page-grid strong { text-align:right; white-space:nowrap; }
+.salary-stage-badge { width:max-content; padding:4px 8px; border-radius:5px; background:#eef3f9; color:#315b8a; font-weight:700; }
 
 @media (max-width: 850px) {
     .salary-head { flex-direction:column; }
     .period-header { align-items:flex-start; flex-direction:column; }
+    .salary-task-trigger { grid-template-columns:28px minmax(180px,1fr) auto; }
+    .salary-task-money { grid-column:2 / -1; text-align:left; }
+    .salary-task-meta { padding-left:56px; }
+    .salary-page-panel { margin-left:16px; }
+    .salary-page-grid { grid-template-columns:1fr 1fr; }
+    .salary-page-grid-head { display:none; }
 }

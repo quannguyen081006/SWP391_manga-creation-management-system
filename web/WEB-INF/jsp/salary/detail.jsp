@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <title>Salary Period Details</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/styles.css" />
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/salary/salary.css" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/salary/salary.css?v=20260620-3" />
 </head>
 <body>
 <jsp:include page="../common/header.jsp" />
@@ -71,8 +71,9 @@
                             <td>
                                 <button type="button" class="btn-toggle-tasks"
                                         data-salary-toggle="${r.assistantId}"
+                                        data-salary-target="assistant-tasks-${r.assistantId}"
                                         aria-expanded="false"
-                                        aria-controls="task-detail-${r.assistantId}">&gt;</button>
+                                        aria-controls="assistant-tasks-${r.assistantId}">+</button>
                             </td>
                             <td><c:out value="${r.assistantName}" /></td>
                             <td>${r.totalTasksApproved}</td>
@@ -83,45 +84,90 @@
                             <td class="salary-adjust-summary">
                                 <span class="salary-bonus">+<fmt:formatNumber value="${r.bonus}" maxFractionDigits="0" /> VND</span>
                                 <span class="salary-deduction">-<fmt:formatNumber value="${r.deduction}" maxFractionDigits="0" /> VND</span>
+                                <c:if test="${r.deduction > 0}">
+                                    <span class="salary-deduction-breakdown">
+                                        <c:if test="${r.lateTaskCount > 0}">
+                                            <span>${r.lateTaskCount} overdue task(s):
+                                                -<fmt:formatNumber value="${r.lateDeduction}" maxFractionDigits="0" /> VND
+                                            </span>
+                                        </c:if>
+                                        <c:if test="${r.heavyRejectedTaskCount > 0}">
+                                            <span>${r.heavyRejectedTaskCount} highly rejected task(s):
+                                                -<fmt:formatNumber value="${r.rejectionDeduction}" maxFractionDigits="0" /> VND
+                                            </span>
+                                        </c:if>
+                                    </span>
+                                </c:if>
                             </td>
                             <td class="money-strong"><fmt:formatNumber value="${r.netSalary}" maxFractionDigits="0" /> VND</td>
                         </tr>
-                        <tr class="task-detail-row" id="task-detail-${r.assistantId}">
+                        <tr class="task-detail-row" id="assistant-tasks-${r.assistantId}">
                             <td colspan="9">
                                 <c:choose>
                                     <c:when test="${not empty r.tasks}">
-                                        <table class="data-table salary-task-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Series</th>
-                                                    <th>Chapter</th>
-                                                    <th>Page</th>
-                                                    <th>Task type</th>
-                                                    <th>Due date</th>
-                                                    <th>Approved date</th>
-                                                    <th>Delivery</th>
-                                                    <th>Rate</th>
-                                                    <th>Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                            <c:forEach items="${r.tasks}" var="t">
-                                                <tr>
-                                                    <td><c:out value="${t.seriesTitle}" /></td>
-                                                    <td>Ch.${t.chapterNumber}</td>
-                                                    <td>${t.pageNumber}</td>
-                                                    <td>${t.taskType}</td>
-                                                    <td><fmt:formatDate value="${t.dueDate}" pattern="dd/MM/yyyy" /></td>
-                                                    <td><fmt:formatDate value="${t.approvedAt}" pattern="dd/MM/yyyy" /></td>
-                                                    <td class="${t.onTime ? 'metric-good' : 'metric-bad'}">
-                                                        ${t.onTime ? 'On time' : 'Late'}
-                                                    </td>
-                                                    <td><fmt:formatNumber value="${t.ratePerPage}" maxFractionDigits="0" /> VND/page</td>
-                                                    <td><fmt:formatNumber value="${t.amount}" maxFractionDigits="0" /> VND</td>
-                                                </tr>
-                                            </c:forEach>
-                                            </tbody>
-                                        </table>
+                                        <div class="salary-task-list">
+                                        <c:forEach items="${r.tasks}" var="t">
+                                            <div class="salary-task-card">
+                                                <button type="button" class="salary-task-trigger"
+                                                        data-salary-toggle="${t.id}"
+                                                        data-salary-target="task-pages-${r.assistantId}-${t.id}"
+                                                        aria-expanded="false"
+                                                        aria-controls="task-pages-${r.assistantId}-${t.id}">
+                                                    <span class="salary-task-chevron" aria-hidden="true">+</span>
+                                                    <span class="salary-task-main">
+                                                        <strong>Task #${t.id}</strong>
+                                                        <span><c:out value="${t.seriesTitle}" /> · Chapter ${t.chapterNumber} · Pages ${t.pageRangeStart}-${t.pageRangeEnd}</span>
+                                                    </span>
+                                                    <span class="salary-task-status ${t.onTime ? 'is-good' : 'is-bad'}">
+                                                        <c:choose>
+                                                            <c:when test="${t.onTime}">On time</c:when>
+                                                            <c:otherwise>Overdue ${t.daysLate} day(s)</c:otherwise>
+                                                        </c:choose>
+                                                    </span>
+                                                    <span class="salary-task-money">
+                                                        <fmt:formatNumber value="${t.amount}" maxFractionDigits="0" /> VND
+                                                    </span>
+                                                </button>
+
+                                                <div class="salary-task-meta">
+                                                    <span>Due <strong><fmt:formatDate value="${t.dueDate}" pattern="dd/MM/yyyy" /></strong></span>
+                                                    <span>Approved <strong><fmt:formatDate value="${t.approvedAt}" pattern="dd/MM/yyyy" /></strong></span>
+                                                    <span>Rejections <strong>${t.rejectionCount}</strong></span>
+                                                    <c:choose>
+                                                        <c:when test="${not empty t.deductionReasons}">
+                                                            <span class="salary-task-penalty">
+                                                                <c:forEach items="${t.deductionReasons}" var="reason" varStatus="reasonStatus">
+                                                                    <c:if test="${not reasonStatus.first}"> · </c:if><c:out value="${reason}" />
+                                                                </c:forEach>
+                                                                · -<fmt:formatNumber value="${t.deductionAmount}" maxFractionDigits="0" /> VND
+                                                            </span>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="salary-task-clean">No deduction</span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </div>
+
+                                                <div class="salary-page-panel"
+                                                     id="task-pages-${r.assistantId}-${t.id}">
+                                                    <div class="salary-page-grid salary-page-grid-head">
+                                                        <span>Page</span>
+                                                        <span>Work stage</span>
+                                                        <span>Rate</span>
+                                                        <span>Amount</span>
+                                                    </div>
+                                                    <c:forEach items="${t.pages}" var="p">
+                                                        <div class="salary-page-grid">
+                                                            <span>Page ${p.pageNumber}</span>
+                                                            <span class="salary-stage-badge">${p.taskType}</span>
+                                                            <span><fmt:formatNumber value="${p.ratePerPage}" maxFractionDigits="0" /> VND/page</span>
+                                                            <strong><fmt:formatNumber value="${p.amount}" maxFractionDigits="0" /> VND</strong>
+                                                        </div>
+                                                    </c:forEach>
+                                                </div>
+                                            </div>
+                                        </c:forEach>
+                                        </div>
                                     </c:when>
                                     <c:otherwise>
                                         <div class="empty-state">
@@ -150,6 +196,6 @@
 </div>
 
 <jsp:include page="../common/footer.jsp" />
-<script src="${ctx}/assets/js/salary/salary.js"></script>
+<script src="${ctx}/assets/js/salary/salary.js?v=20260620-3"></script>
 </body>
 </html>

@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.math.BigDecimal;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -368,11 +369,14 @@ public class PageTaskRepository {
 
     public List<Map<String, Object>> findApprovedTasksForSalary(
             long periodId, long assistantId) {
-        String sql = "SELECT t.id, s.title AS seriesTitle, c.chapterNumber, "
+        String sql = "SELECT t.id, t.pageRangeStart, t.pageRangeEnd, "
+                + "t.rejectionCount, s.title AS seriesTitle, c.chapterNumber, "
                 + "pps.pageNumber, pps.taskTypeCode, t.dueDate, "
                 + "t.updatedAt AS approvedAt, tt.ratePerPage, "
                 + "CASE WHEN t.updatedAt <= DATEADD(DAY, 1, CAST(t.dueDate AS DATETIME)) "
-                + "THEN 1 ELSE 0 END AS onTime "
+                + "THEN 1 ELSE 0 END AS onTime, "
+                + "CASE WHEN t.updatedAt > DATEADD(DAY, 1, CAST(t.dueDate AS DATETIME)) "
+                + "THEN DATEDIFF(DAY, t.dueDate, t.updatedAt) ELSE 0 END AS daysLate "
                 + "FROM PageTask t "
                 + "JOIN Chapter c ON c.id = t.chapterId "
                 + "JOIN Series s ON s.id = c.seriesId "
@@ -390,37 +394,55 @@ public class PageTaskRepository {
                 + "AND earlier.status = 'SETTLED' "
                 + "AND earlier.settledAt < sp.settledAt "
                 + "AND earlier.settledAt >= t.updatedAt))) "
-                + "ORDER BY s.title ASC, c.chapterNumber ASC, pps.pageNumber ASC";
-        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+                + "ORDER BY s.title ASC, c.chapterNumber ASC, t.id ASC, pps.pageNumber ASC";
+        Map<Long, Map<String, Object>> tasks =
+                new LinkedHashMap<Long, Map<String, Object>>();
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, periodId);
-            ps.setLong(2, assistantId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Map<String, Object> row = new HashMap<String, Object>();
-                    BigDecimal rate = rs.getBigDecimal("ratePerPage");
-                    if (rate == null) {
-                        rate = BigDecimal.ZERO;
-                    }
-                    row.put("id", rs.getLong("id"));
-                    row.put("seriesTitle", rs.getString("seriesTitle"));
-                    row.put("chapterNumber", rs.getInt("chapterNumber"));
-                    row.put("pageNumber", rs.getInt("pageNumber"));
-                    row.put("taskType", rs.getString("taskTypeCode"));
-                    row.put("dueDate", rs.getDate("dueDate"));
-                    row.put("approvedAt", rs.getTimestamp("approvedAt"));
-                    row.put("ratePerPage", rate);
-                    row.put("onTime", rs.getBoolean("onTime"));
-                    row.put("amount", rate);
-                    rows.add(row);
-                }
-            }
-        } catch (SQLException ex) {
-            throw new RuntimeException("Cannot load approved salary tasks", ex);
-        }
-        return rows;
-    }
+              ps.setLong(2, assistantId);
+              try (ResultSet rs = ps.executeQuery()) {
+                  while (rs.next()) {
+                      long taskId = rs.getLong("id");
+                      Map<String, Object> task = tasks.get(taskId);
+                      if (task == null) {
+                          task = new HashMap<String, Object>();
+                          task.put("id", taskId);
+                          task.put("seriesTitle", rs.getString("seriesTitle"));
+                          task.put("chapterNumber", rs.getInt("chapterNumber"));
+                          task.put("pageRangeStart", rs.getInt("pageRangeStart"));
+                          task.put("pageRangeEnd", rs.getInt("pageRangeEnd"));
+                          task.put("dueDate", rs.getDate("dueDate"));
+                          task.put("approvedAt", rs.getTimestamp("approvedAt"));
+                          task.put("onTime", rs.getBoolean("onTime"));
+                          task.put("daysLate", rs.getInt("daysLate"));
+                          task.put("rejectionCount", rs.getInt("rejectionCount"));
+                          task.put("amount", BigDecimal.ZERO);
+                          task.put("pages", new ArrayList<Map<String, Object>>());
+                          tasks.put(taskId, task);
+                      }
+
+                      BigDecimal rate = rs.getBigDecimal("ratePerPage");
+                      if (rate == null) {
+                          rate = BigDecimal.ZERO;
+                      }
+                      Map<String, Object> page = new HashMap<String, Object>();
+                      page.put("pageNumber", rs.getInt("pageNumber"));
+                      page.put("taskType", rs.getString("taskTypeCode"));
+                      page.put("ratePerPage", rate);
+                      page.put("amount", rate);
+                      @SuppressWarnings("unchecked")
+                      List<Map<String, Object>> pages =
+                              (List<Map<String, Object>>) task.get("pages");
+                      pages.add(page);
+                      task.put("amount", ((BigDecimal) task.get("amount")).add(rate));
+                  }
+              }
+          } catch (SQLException ex) {
+              throw new RuntimeException("Cannot load approved salary tasks", ex);
+          }
+          return new ArrayList<Map<String, Object>>(tasks.values());
+      }
 
     // ============================================================
     // [4] TẠO & CẬP NHẬT TASK (Mangaka)

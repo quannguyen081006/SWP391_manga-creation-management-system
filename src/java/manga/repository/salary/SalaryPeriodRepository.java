@@ -53,6 +53,20 @@ public class SalaryPeriodRepository {
         }
     }
 
+    public Long findOpenPeriodId(long mangakaId) {
+        String sql = "SELECT TOP 1 id FROM SalaryPeriod "
+                + "WHERE mangakaId = ? AND status = 'OPEN' ORDER BY createdAt DESC, id DESC";
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, mangakaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Long.valueOf(rs.getLong("id")) : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot find open salary period", ex);
+        }
+    }
+
     public List<Long> findMangakasWithUnsalariedApprovedTasks() {
         String sql = "SELECT DISTINCT s.mangakaId FROM PageTask pt "
                 + "JOIN Chapter c ON c.id = pt.chapterId "

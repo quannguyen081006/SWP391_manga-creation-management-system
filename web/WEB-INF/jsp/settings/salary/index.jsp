@@ -7,16 +7,154 @@
     <title>Salary &amp; KPI Settings</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/styles.css" />
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/salary/salary-settings.css" />
+    <style>
+        .sal-section {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 28px;
+            margin-bottom: 20px;
+        }
+
+        .sal-section-label {
+            margin: 0 0 12px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+        }
+
+        .sal-formula {
+            margin-bottom: 20px;
+            padding: 14px 18px;
+            background: var(--bg);
+            border-radius: 8px;
+            color: var(--ink);
+            font-family: "Courier New", monospace;
+            font-size: 13px;
+            line-height: 2;
+        }
+
+        .sal-comment {
+            color: var(--muted);
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .sal-var-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
+        .sal-dot {
+            width: 8px;
+            height: 8px;
+            flex: 0 0 8px;
+            border-radius: 50%;
+        }
+
+        .sal-dot-kpi { background: #185FA5; }
+        .sal-dot-bonus { background: #3B6D11; }
+        .sal-dot-penalty { background: #A32D2D; }
+        .sal-dot-threshold { background: #854F0B; }
+
+        .sal-var-copy {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sal-var-name {
+            margin: 0 0 2px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .sal-var-desc {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .sal-var-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .sal-var-input {
+            width: 90px;
+            padding: 6px 10px;
+            text-align: right;
+        }
+
+        .sal-var-unit {
+            color: var(--muted);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .sal-hint {
+            margin-top: 8px;
+            padding: 8px 14px;
+            background: var(--bg);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .sal-note {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .settings-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 720px) {
+            .sal-section {
+                padding: 20px 16px;
+            }
+
+            .sal-var-row {
+                align-items: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .sal-var-copy {
+                min-width: calc(100% - 20px);
+            }
+
+            .sal-var-control {
+                width: 100%;
+                padding-left: 20px;
+            }
+
+            .settings-actions {
+                flex-direction: column-reverse;
+            }
+        }
+    </style>
 </head>
 <body>
 <jsp:include page="../../common/header.jsp" />
 
 <main class="container settings-page">
     <div class="settings-page-head">
-        <div class="settings-page-icon" aria-hidden="true"></div>
         <div>
             <h2>Salary &amp; KPI Settings</h2>
-            <p>Configure automatic bonus and late-task deduction suggestions.</p>
+            <p>Configure salary rates and the formulas used to calculate KPI, bonus, and deductions.</p>
         </div>
     </div>
 
@@ -25,7 +163,7 @@
 
     <div class="section-card settings-panel">
         <h3 class="section-title">Task Type Rates</h3>
-        <p class="section-desc">Base salary rate per completed page.</p>
+        <p class="section-desc">Base salary per completed page, by task type. Saved individually.</p>
         <div class="task-rate-table-wrap">
             <table class="data-table">
                 <thead>
@@ -56,56 +194,154 @@
         </div>
     </div>
 
-    <div class="section-card settings-panel">
-        <h3 class="section-title">Bonus &amp; Deduction Suggestions</h3>
-        <form class="settings-form" method="post" action="${pageContext.request.contextPath}/main/settings/salary">
-            <div class="settings-grid">
-                <label class="setting-control-card" for="kpiBonusThreshold">
-                    <span class="setting-control-icon setting-control-icon-bonus" aria-hidden="true"></span>
-                    <span class="setting-control-copy">
-                        <span class="setting-control-title">KPI bonus threshold</span>
-                        <span class="setting-control-desc">KPI scores at or above this threshold receive a bonus suggestion.</span>
-                    </span>
-                    <span class="setting-number-wrap">
-                        <input id="kpiBonusThreshold" type="number" name="kpiBonusThreshold"
-                               min="0" max="100" value="${settings.kpiBonusThreshold}" required />
-                        <span class="setting-number-unit">points</span>
-                    </span>
-                </label>
+    <form class="settings-form" method="post"
+          action="${pageContext.request.contextPath}/main/settings/salary">
 
-                <label class="setting-control-card" for="bonusPercent">
-                    <span class="setting-control-icon setting-control-icon-bonus" aria-hidden="true"></span>
-                    <span class="setting-control-copy">
-                        <span class="setting-control-title">Bonus percentage</span>
-                        <span class="setting-control-desc">Percentage of gross salary suggested as a bonus after reaching the KPI threshold.</span>
-                    </span>
-                    <span class="setting-number-wrap">
-                        <input id="bonusPercent" type="number" name="bonusPercent"
-                               min="0" max="100" step="0.1" value="${settings.bonusPercent}" required />
-                        <span class="setting-number-unit">%</span>
-                    </span>
-                </label>
-
-                <label class="setting-control-card" for="penaltyPerLateTask">
-                    <span class="setting-control-icon setting-control-icon-penalty" aria-hidden="true"></span>
-                    <span class="setting-control-copy">
-                        <span class="setting-control-title">Penalty per late task</span>
-                        <span class="setting-control-desc">Amount suggested for deduction for each task approved after its due date.</span>
-                    </span>
-                    <span class="setting-number-wrap">
-                        <input id="penaltyPerLateTask" type="number" name="penaltyPerLateTask"
-                               min="0" step="1000" value="${settings.penaltyPerLateTask}" required />
-                        <span class="setting-number-unit">VND / task</span>
-                    </span>
-                </label>
+        <div class="sal-section">
+            <p class="sal-section-label">01 — KPI score</p>
+            <div class="sal-formula">
+                <div>KPI = onTimeRate × (W₁ / 100) + qualityRate × (W₂ / 100)</div>
+                <div class="sal-comment">// onTimeRate = tasks on-time / total approved × 100</div>
+                <div class="sal-comment">// qualityRate = tasks never rejected / total approved × 100</div>
+                <div class="sal-comment">// W₁ + W₂ must equal 100</div>
             </div>
 
-            <div class="settings-actions">
-                <a class="btn" href="${pageContext.request.contextPath}/main/settings">&larr; Back to Settings</a>
-                <button class="btn primary" type="submit">Save Settings</button>
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-kpi" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">On-time weight (W₁)</p>
+                    <p class="sal-var-desc">Trọng số tỉ lệ đúng hạn</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="kpiOnTimeWeight" type="number"
+                           name="kpiOnTimeWeight" min="0" max="100" step="1"
+                           value="${settings.kpiOnTimeWeight}" required />
+                    <span class="sal-var-unit">pts</span>
+                </div>
             </div>
-        </form>
-    </div>
+
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-kpi" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">Quality weight (W₂)</p>
+                    <p class="sal-var-desc">Trọng số tỉ lệ không bị reject</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="kpiQualityWeight" type="number"
+                           name="kpiQualityWeight" min="0" max="100" step="1"
+                           value="${settings.kpiQualityWeight}" required />
+                    <span class="sal-var-unit">pts</span>
+                </div>
+            </div>
+
+            <div class="sal-hint">W₁ + W₂ phải bằng 100.</div>
+        </div>
+
+        <div class="sal-section">
+            <p class="sal-section-label">02 — Gross salary</p>
+            <div class="sal-formula">
+                <div>Gross = Σ (ratePerPage × pages)</div>
+                <div class="sal-comment">// Cộng dồn theo task type của các task approved chưa trả lương</div>
+            </div>
+            <p class="sal-note">Chỉnh đơn giá tại bảng Task Type Rates ở trên.</p>
+        </div>
+
+        <div class="sal-section">
+            <p class="sal-section-label">03 — Bonus</p>
+            <div class="sal-formula">
+                <div>Bonus = KPI ≥ T ? Gross × B / 100 : 0</div>
+            </div>
+
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-bonus" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">KPI threshold (T)</p>
+                    <p class="sal-var-desc">Điểm KPI tối thiểu để được thưởng</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="kpiBonusThreshold" type="number"
+                           name="kpiBonusThreshold" min="0" max="100"
+                           value="${settings.kpiBonusThreshold}" required />
+                    <span class="sal-var-unit">pts</span>
+                </div>
+            </div>
+
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-bonus" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">Bonus rate (B)</p>
+                    <p class="sal-var-desc">Phần trăm thưởng tính trên gross</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="bonusPercent" type="number"
+                           name="bonusPercent" min="0" max="100" step="0.1"
+                           value="${settings.bonusPercent}" required />
+                    <span class="sal-var-unit">%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sal-section">
+            <p class="sal-section-label">04 — Deduction</p>
+            <div class="sal-formula">
+                <div>Deduct = (lateTasks × P₁) + (tasks rejected ≥ R times × P₂)</div>
+            </div>
+
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-penalty" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">Late penalty (P₁)</p>
+                    <p class="sal-var-desc">Phạt mỗi task duyệt sau due date</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="penaltyPerLateTask" type="number"
+                           name="penaltyPerLateTask" min="0" step="1000"
+                           value="${settings.penaltyPerLateTask}" required />
+                    <span class="sal-var-unit">VND / task</span>
+                </div>
+            </div>
+
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-threshold" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">Rejection threshold (R)</p>
+                    <p class="sal-var-desc">Số lần reject tối thiểu để bị phạt P₂</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="rejectionPenaltyThreshold" type="number"
+                           name="rejectionPenaltyThreshold" min="1"
+                           value="${settings.rejectionPenaltyThreshold}" required />
+                    <span class="sal-var-unit">lần</span>
+                </div>
+            </div>
+
+            <div class="sal-var-row">
+                <span class="sal-dot sal-dot-penalty" aria-hidden="true"></span>
+                <div class="sal-var-copy">
+                    <p class="sal-var-name">Rejection penalty (P₂)</p>
+                    <p class="sal-var-desc">Phạt mỗi task đạt ngưỡng R</p>
+                </div>
+                <div class="sal-var-control">
+                    <input class="sal-var-input" id="penaltyPerRejectedTask" type="number"
+                           name="penaltyPerRejectedTask" min="0" step="1000"
+                           value="${settings.penaltyPerRejectedTask}" required />
+                    <span class="sal-var-unit">VND / task</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sal-section">
+            <p class="sal-section-label">05 — Net salary</p>
+            <div class="sal-formula">
+                <div>Net = Gross + Bonus − Deduct</div>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <a class="btn" href="${pageContext.request.contextPath}/main/settings">&larr; Back to Settings</a>
+            <button class="btn primary" type="submit">Save Settings</button>
+        </div>
+    </form>
 </main>
 
 <jsp:include page="../../common/footer.jsp" />

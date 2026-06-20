@@ -72,7 +72,8 @@ public class AssistantSalaryRecordRepository {
         return rows;
     }
 
-    public List<AssistantSalaryRecord> calculatePreview(long periodId, long mangakaId) {
+    public List<AssistantSalaryRecord> calculatePreview(long periodId, long mangakaId,
+            int kpiOnTimeWeight, int kpiQualityWeight) {
         String sql = "WITH ApprovedTasks AS ("
                 + "SELECT t.id, t.assistantId, t.pageRangeStart, t.pageRangeEnd, t.dueDate, "
                 + "t.updatedAt, t.rejectionCount FROM PageTask t "
@@ -120,11 +121,15 @@ public class AssistantSalaryRecordRepository {
                             ? ZERO
                             : new BigDecimal(rejectedTasks).multiply(new BigDecimal("100"))
                                     .divide(new BigDecimal(totalTasks), 6, RoundingMode.HALF_UP);
+                    BigDecimal wOnTime = new BigDecimal(kpiOnTimeWeight)
+                            .divide(new BigDecimal("100"));
+                    BigDecimal wQuality = new BigDecimal(kpiQualityWeight)
+                            .divide(new BigDecimal("100"));
                     BigDecimal kpiScore = totalTasks == 0
                             ? ZERO
-                            : onTimeRate.multiply(new BigDecimal("0.7"))
+                            : onTimeRate.multiply(wOnTime)
                                     .add(new BigDecimal("100").subtract(rejectionRatio)
-                                            .multiply(new BigDecimal("0.3")))
+                                            .multiply(wQuality))
                                     .setScale(2, RoundingMode.HALF_UP);
                     BigDecimal grossSalary = rs.getBigDecimal("grossSalary");
 
@@ -225,6 +230,36 @@ public class AssistantSalaryRecordRepository {
             }
         } catch (SQLException ex) {
             throw new RuntimeException("Cannot count late salary tasks", ex);
+        }
+    }
+
+    public int countHeavyRejectedTasks(long periodId, long assistantId, int threshold) {
+        String sql = "SELECT COUNT(1) FROM PageTask t "
+                + "JOIN Chapter c ON c.id = t.chapterId "
+                + "JOIN Series s ON s.id = c.seriesId "
+                + "JOIN SalaryPeriod sp ON sp.id = ? AND sp.mangakaId = s.mangakaId "
+                + "WHERE t.assistantId = ? AND UPPER(t.status) = 'APPROVED' "
+                + "AND ((sp.status = 'OPEN' AND t.isSalaried = 0) "
+                + "OR (sp.status = 'SETTLED' AND t.isSalaried = 1 "
+                + "AND t.updatedAt <= sp.settledAt "
+                + "AND NOT EXISTS (SELECT 1 FROM SalaryPeriod earlier "
+                + "JOIN AssistantSalaryRecord er ON er.periodId = earlier.id "
+                + "AND er.assistantId = t.assistantId "
+                + "WHERE earlier.mangakaId = sp.mangakaId "
+                + "AND earlier.status = 'SETTLED' "
+                + "AND earlier.settledAt < sp.settledAt "
+                + "AND earlier.settledAt >= t.updatedAt))) "
+                + "AND t.rejectionCount >= ?";
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, periodId);
+            ps.setLong(2, assistantId);
+            ps.setInt(3, threshold);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot count heavily rejected salary tasks", ex);
         }
     }
 

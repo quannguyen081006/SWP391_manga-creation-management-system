@@ -12,6 +12,11 @@ public class SalarySettingsService {
     public static final int DEFAULT_KPI_BONUS_THRESHOLD = 90;
     public static final BigDecimal DEFAULT_BONUS_PERCENT = new BigDecimal("5");
     public static final BigDecimal DEFAULT_PENALTY_PER_LATE_TASK = new BigDecimal("50000");
+    public static final int DEFAULT_REJECTION_PENALTY_THRESHOLD = 3;
+    public static final BigDecimal DEFAULT_PENALTY_PER_REJECTED_TASK =
+            new BigDecimal("30000");
+    public static final int DEFAULT_KPI_ON_TIME_WEIGHT = 70;
+    public static final int DEFAULT_KPI_QUALITY_WEIGHT = 30;
 
     @Autowired
     private SystemSettingRepository systemSettingRepository;
@@ -27,11 +32,25 @@ public class SalarySettingsService {
         settings.setPenaltyPerLateTask(systemSettingRepository.getDecimal(
                 SystemSettingRepository.SALARY_PENALTY_PER_LATE_TASK,
                 DEFAULT_PENALTY_PER_LATE_TASK));
+        settings.setRejectionPenaltyThreshold(systemSettingRepository.getInt(
+                SystemSettingRepository.SALARY_REJECTION_PENALTY_THRESHOLD,
+                DEFAULT_REJECTION_PENALTY_THRESHOLD));
+        settings.setPenaltyPerRejectedTask(systemSettingRepository.getDecimal(
+                SystemSettingRepository.SALARY_PENALTY_PER_REJECTED_TASK,
+                DEFAULT_PENALTY_PER_REJECTED_TASK));
+        settings.setKpiOnTimeWeight(systemSettingRepository.getInt(
+                SystemSettingRepository.SALARY_KPI_ON_TIME_WEIGHT,
+                DEFAULT_KPI_ON_TIME_WEIGHT));
+        settings.setKpiQualityWeight(systemSettingRepository.getInt(
+                SystemSettingRepository.SALARY_KPI_QUALITY_WEIGHT,
+                DEFAULT_KPI_QUALITY_WEIGHT));
         return settings;
     }
 
     public void updateSettings(int kpiBonusThreshold, BigDecimal bonusPercent,
-            BigDecimal penaltyPerLateTask) {
+            BigDecimal penaltyPerLateTask, int rejectionPenaltyThreshold,
+            BigDecimal penaltyPerRejectedTask, int kpiOnTimeWeight,
+            int kpiQualityWeight) {
         if (kpiBonusThreshold < 0 || kpiBonusThreshold > 100) {
             throw new IllegalArgumentException("KPI bonus threshold must be between 0 and 100");
         }
@@ -42,7 +61,19 @@ public class SalarySettingsService {
         if (penaltyPerLateTask == null || penaltyPerLateTask.signum() < 0) {
             throw new IllegalArgumentException("Penalty per late task cannot be negative");
         }
+        if (rejectionPenaltyThreshold < 1) {
+            throw new IllegalArgumentException("Rejection penalty threshold must be at least 1");
+        }
+        if (penaltyPerRejectedTask == null || penaltyPerRejectedTask.signum() < 0) {
+            throw new IllegalArgumentException("Penalty per rejected task cannot be negative");
+        }
+        if (kpiOnTimeWeight < 0 || kpiQualityWeight < 0
+                || kpiOnTimeWeight + kpiQualityWeight != 100) {
+            throw new IllegalArgumentException("KPI weights must sum to 100");
+        }
         systemSettingRepository.setSalarySettings(
-                kpiBonusThreshold, bonusPercent, penaltyPerLateTask);
+                kpiBonusThreshold, bonusPercent, penaltyPerLateTask,
+                rejectionPenaltyThreshold, penaltyPerRejectedTask,
+                kpiOnTimeWeight, kpiQualityWeight);
     }
 }

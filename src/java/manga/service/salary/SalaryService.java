@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.Locale;
@@ -69,9 +70,10 @@ public class SalaryService {
     }
 
     private void calculateForPeriod(long periodId, long mangakaId) {
-        List<AssistantSalaryRecord> rows = assistantSalaryRecordRepository.calculatePreview(
-                periodId, mangakaId);
         SalarySettings settings = salarySettingsService.getSettings();
+        List<AssistantSalaryRecord> rows = assistantSalaryRecordRepository.calculatePreview(
+                periodId, mangakaId,
+                settings.getKpiOnTimeWeight(), settings.getKpiQualityWeight());
         for (AssistantSalaryRecord row : rows) {
             BigDecimal suggestedBonus = calculateSuggestedBonus(
                     row.getKpiScore(), row.getGrossSalary(), settings);
@@ -79,6 +81,13 @@ public class SalaryService {
                     periodId, row.getAssistantId());
             BigDecimal suggestedDeduction = settings.getPenaltyPerLateTask()
                     .multiply(new BigDecimal(lateTaskCount));
+            int heavyRejectedCount = assistantSalaryRecordRepository.countHeavyRejectedTasks(
+                    periodId, row.getAssistantId(),
+                    settings.getRejectionPenaltyThreshold());
+            BigDecimal rejectPenalty = settings.getPenaltyPerRejectedTask()
+                    .multiply(new BigDecimal(heavyRejectedCount));
+            suggestedDeduction = suggestedDeduction.add(rejectPenalty);
+            row.setHeavyRejectedTaskCount(heavyRejectedCount);
             row.setSuggestedBonus(suggestedBonus);
             row.setSuggestedDeduction(suggestedDeduction);
             row.setBonus(suggestedBonus);
@@ -123,12 +132,21 @@ public class SalaryService {
             BigDecimal grossSalary = (BigDecimal) row.get("grossSalary");
             int lateTaskCount = assistantSalaryRecordRepository.countLateTasks(
                     periodId, assistantId);
+            int heavyRejectedCount = assistantSalaryRecordRepository.countHeavyRejectedTasks(
+                    periodId, assistantId, settings.getRejectionPenaltyThreshold());
+            BigDecimal suggestedDeduction = settings.getPenaltyPerLateTask()
+                    .multiply(new BigDecimal(lateTaskCount))
+                    .add(settings.getPenaltyPerRejectedTask()
+                            .multiply(new BigDecimal(heavyRejectedCount)));
             row.put("suggestedBonus", calculateSuggestedBonus(kpiScore, grossSalary, settings));
-            row.put("suggestedDeduction", settings.getPenaltyPerLateTask()
-                    .multiply(new BigDecimal(lateTaskCount)));
+            row.put("suggestedDeduction", suggestedDeduction);
             row.put("lateTaskCount", lateTaskCount);
-            row.put("tasks", pageTaskRepository.findApprovedTasksForSalary(
-                    periodId, assistantId));
+            row.put("heavyRejectedTaskCount", heavyRejectedCount);
+            row.put("lateDeduction", settings.getPenaltyPerLateTask()
+                    .multiply(new BigDecimal(lateTaskCount)));
+            row.put("rejectionDeduction", settings.getPenaltyPerRejectedTask()
+                    .multiply(new BigDecimal(heavyRejectedCount)));
+            row.put("tasks", loadTaskBreakdown(periodId, assistantId, settings));
         }
         return rows;
     }
@@ -142,10 +160,36 @@ public class SalaryService {
         List<AssistantSalaryRecord> rows =
                 assistantSalaryRecordRepository.findSettledByAssistant(user.getId());
         for (AssistantSalaryRecord row : rows) {
-            row.setTasks(pageTaskRepository.findApprovedTasksForSalary(
-                    row.getPeriodId(), user.getId()));
+            row.setTasks(loadTaskBreakdown(
+                    row.getPeriodId(), user.getId(), salarySettingsService.getSettings()));
         }
         return rows;
+    }
+
+    private List<Map<String, Object>> loadTaskBreakdown(long periodId,
+            long assistantId, SalarySettings settings) {
+        List<Map<String, Object>> tasks =
+                pageTaskRepository.findApprovedTasksForSalary(periodId, assistantId);
+        for (Map<String, Object> task : tasks) {
+            List<String> reasons = new ArrayList<String>();
+            BigDecimal deduction = BigDecimal.ZERO;
+            if (!Boolean.TRUE.equals(task.get("onTime"))) {
+                int daysLate = ((Number) task.get("daysLate")).intValue();
+                deduction = deduction.add(settings.getPenaltyPerLateTask());
+                reasons.add("Overdue by " + daysLate + " day"
+                        + (daysLate == 1 ? "" : "s"));
+            }
+            int rejectionCount = ((Number) task.get("rejectionCount")).intValue();
+            if (rejectionCount >= settings.getRejectionPenaltyThreshold()) {
+                deduction = deduction.add(settings.getPenaltyPerRejectedTask());
+                reasons.add("Rejected " + rejectionCount + " times"
+                        + " (threshold: "
+                        + settings.getRejectionPenaltyThreshold() + ")");
+            }
+            task.put("deductionReasons", reasons);
+            task.put("deductionAmount", deduction);
+        }
+        return tasks;
     }
 
     public void autoCreateAndCalculate() {
@@ -165,15 +209,12 @@ public class SalaryService {
     }
 
     private long autoCreateAndCalculateForMangaka(long mangakaId, boolean failWhenSkipped) {
-        String periodName = currentAutoPeriodName();
-        if (salaryPeriodRepository.existsByName(mangakaId, periodName)) {
-            String message = "A salary period for this month already exists";
-            if (failWhenSkipped) {
-                throw new BusinessRuleException(message);
-            }
-            LOGGER.warning(message + " for Mangaka #" + mangakaId);
-            return 0L;
+        Long openPeriodId = salaryPeriodRepository.findOpenPeriodId(mangakaId);
+        if (openPeriodId != null) {
+            calculateForPeriod(openPeriodId.longValue(), mangakaId);
+            return openPeriodId.longValue();
         }
+        String periodName = currentAutoPeriodName();
         if (!salaryPeriodRepository.hasUnsalariedApprovedTasks(mangakaId)) {
             String message = "No approved unsalaried tasks are available";
             if (failWhenSkipped) {
