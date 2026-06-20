@@ -43,7 +43,7 @@
     Delayed chip hiện thêm nếu task.delayed = true (nộp trễ so với dueDate gốc)
 --%>
 <div class="section-card detail-grid">
-    <div><span class="detail-label">Type</span><strong>${task.taskType}</strong></div>
+    <div><span class="detail-label">Types</span><strong><c:out value="${task.taskTypesDisplay}" /></strong></div>
     <div><span class="detail-label">Pages</span><strong>${task.pageRangeStart}-${task.pageRangeEnd}</strong></div>
     <div><span class="detail-label">Assigned To</span><strong>${task.assistantName}</strong></div>
     <div><span class="detail-label">Due Date</span><strong>${task.dueDate}</strong></div>
@@ -130,8 +130,8 @@
 --%>
 <c:if test="${task.status == 'APPROVED'}">
     <div class="alert success page-approved-banner">
-        Task này đã được Mangaka duyệt.
-        Tất cả ảnh đã được cập nhật vào Chapter ${task.chapterNumber}: ${task.chapterTitle}.
+        This task has been approved by the Mangaka.
+        All images have been updated to Chapter ${task.chapterNumber}: ${task.chapterTitle}.
     </div>
 </c:if>
 
@@ -147,7 +147,7 @@
         <div>
             <h3 class="section-title compact-title">Page Submission</h3>
             <p class="section-desc">
-                Pages ${task.pageRangeStart}–${task.pageRangeEnd} · ${task.taskType}
+                Pages ${task.pageRangeStart}–${task.pageRangeEnd} · <c:out value="${task.taskTypesDisplay}" />
             </p>
         </div>
     </div>
@@ -175,7 +175,7 @@
         data-chapter-id="${task.chapterId}"
         data-page-start="${task.pageRangeStart}"
         data-page-end="${task.pageRangeEnd}"
-        data-task-type="${task.taskType}"
+        data-task-types="${task.taskTypesDisplay}"
         data-status="${task.status}"
         data-can-update="${canAssistantUpdate}"
         data-can-submit="${canAssistantSubmit}"

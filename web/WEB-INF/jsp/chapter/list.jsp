@@ -173,7 +173,7 @@
             <form id="chapterCreateForm" class="form-grid">
                 <label class="field-label" for="chapterCreateTitle">Title</label>
                 <input id="chapterCreateTitle" name="title" type="text" placeholder="Chapter title" required />
-                <label class="field-label" for="chapterCreateTotalPages">Số trang dự kiến</label>
+                <label class="field-label" for="chapterCreateTotalPages">Expected page count</label>
                 <%-- Stepper ±1 ±5 để điều chỉnh nhanh, mặc định 24 trang, JS bắt sự kiện data-total-pages-delta --%>
                 <div class="chapter-page-total-controls">
                     <button class="btn small" type="button" data-total-pages-delta="-5">−5</button>

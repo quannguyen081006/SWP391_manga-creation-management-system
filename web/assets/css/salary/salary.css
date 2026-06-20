@@ -1,0 +1,41 @@
+/* === Salary period list (period.jsp) === */
+.period-card { background:#fff; border-radius:12px; padding:22px; margin-bottom:16px; border-left:4px solid #27ae60; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.period-card.status-SETTLED { border-left-color:#2980b9; }
+.period-header { display:flex; justify-content:space-between; gap:16px; align-items:center; }
+.period-title { font-size:20px; font-weight:700; color:#2c3e50; }
+.period-meta { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:8px; color:#6b7280; }
+.salary-generate-form { margin-top:14px; }
+
+/* === Salary status badge === */
+.status-badge { display:inline-block; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:800; }
+.status-badge.OPEN { color:#176b3a; background:#dcfce7; }
+.status-badge.SETTLED { color:#1d4ed8; background:#dbeafe; }
+.salary-status-badge { margin-left:8px; }
+
+/* === Salary detail (detail.jsp) === */
+.salary-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:24px; }
+.salary-title { margin-bottom:8px; }
+.salary-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.salary-table-wrap { width:100%; max-width:100%; overflow-x:auto; }
+.salary-detail-table { min-width:940px; font-size:13px; }
+.salary-detail-table th,
+.salary-detail-table td { padding:10px 6px; }
+.salary-adjust-summary { white-space:nowrap; }
+.salary-adjust-summary span { display:block; }
+.salary-bonus { color:#176b3a; font-weight:700; }
+.salary-deduction { color:#b42318; font-weight:700; margin-top:3px; }
+.money-strong { font-weight:800; color:#176b3a; white-space:nowrap; }
+.metric-good { color:#27ae60; font-weight:700; }
+.metric-warn { color:#f39c12; font-weight:700; }
+.metric-bad { color:#e74c3c; font-weight:700; }
+.btn-toggle-tasks { background:none; border:none; cursor:pointer; font-size:14px; padding:2px 6px; }
+.salary-toggle-column { width:32px; }
+.task-detail-row { display:none; }
+.task-detail-row.is-open { display:table-row; }
+.task-detail-row > td { background:#f9fafb; }
+.salary-task-table { margin:0; }
+
+@media (max-width: 850px) {
+    .salary-head { flex-direction:column; }
+    .period-header { align-items:flex-start; flex-direction:column; }
+}

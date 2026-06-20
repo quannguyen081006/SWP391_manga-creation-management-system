@@ -2,6 +2,8 @@ package manga.model.chaptertask;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TaskSummary {
     private long id;
@@ -9,7 +11,7 @@ public class TaskSummary {
     private long assistantId;
     private int pageRangeStart;
     private int pageRangeEnd;
-    private String taskType;
+    private List<String> taskTypes = new ArrayList<String>();
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Bangkok")
     private Date dueDate;
     private String status;
@@ -36,8 +38,13 @@ public class TaskSummary {
     public void setPageRangeStart(int pageRangeStart) { this.pageRangeStart = pageRangeStart; }
     public int getPageRangeEnd() { return pageRangeEnd; }
     public void setPageRangeEnd(int pageRangeEnd) { this.pageRangeEnd = pageRangeEnd; }
-    public String getTaskType() { return taskType; }
-    public void setTaskType(String taskType) { this.taskType = taskType; }
+    public List<String> getTaskTypes() { return taskTypes; }
+    public void setTaskTypes(List<String> taskTypes) {
+        this.taskTypes = taskTypes == null ? new ArrayList<String>() : taskTypes;
+    }
+    public String getTaskTypesDisplay() {
+        return taskTypes == null ? "" : String.join(", ", taskTypes);
+    }
     public Date getDueDate() { return dueDate; }
     public void setDueDate(Date dueDate) { this.dueDate = dueDate; }
     public String getStatus() { return status; }

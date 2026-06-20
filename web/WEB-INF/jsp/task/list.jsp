@@ -87,12 +87,14 @@
         </select>
         <input name="pageRangeStart" type="number" min="1" placeholder="Page Start" required />
         <input name="pageRangeEnd" type="number" min="1" placeholder="Page End" required />
-        <select name="taskType" required>
+        <select name="taskTypes" multiple required>
             <option value="">Select Task Type</option>
             <option value="SKETCHING">Sketching</option>
             <option value="INKING">Inking</option>
             <option value="COLORING">Coloring</option>
+            <option value="SCREENTONE">Screentone</option>
             <option value="LETTERING">Lettering</option>
+            <option value="MIXED">Mixed</option>
         </select>
         <label class="field-label" for="taskCreateDueDate">Due Date</label>
         <input id="taskCreateDueDate" name="dueDate" type="date" aria-label="Due Date" required />
@@ -136,7 +138,7 @@
                     <td>${t.id}</td>
                     <td><strong>${t.seriesTitle}</strong><br/>Ch. ${t.chapterNumber} - ${t.chapterTitle}</td>
                     <td>${t.pageRangeStart}-${t.pageRangeEnd}</td>
-                    <td>${t.taskType}</td>
+                    <td><c:out value="${t.taskTypesDisplay}" /></td>
                     <td>${t.assistantName}</td>
                     <td>
                         <span class="status-chip ${t.status=='OVERDUE' ? 'status-overdue' : (t.status=='IN_PROGRESS' ? 'status-progress' : (t.status=='PENDING' ? 'status-pending' : (t.status=='APPROVED' ? 'status-approved' : 'status-draft')))}">${t.status}</span>
@@ -161,8 +163,8 @@
     <div id="taskApprovePopover" class="task-action-popover" aria-hidden="true">
         <strong id="approvePopoverTitle">Approve task</strong>
         <label class="field-label" for="approvePopoverComment">Comment (optional)</label>
-        <textarea id="approvePopoverComment" maxlength="300" placeholder="Ghi chú cho assistant (tuỳ chọn)"></textarea>
-        <p class="popover-helper">Không điền vẫn có thể approve bình thường.</p>
+        <textarea id="approvePopoverComment" maxlength="300" placeholder="Note for assistant (optional)"></textarea>
+        <p class="popover-helper">You can approve without filling this in.</p>
         <div class="popover-actions">
             <button class="btn small" type="button" data-popover-cancel="approve">Cancel</button>
             <button class="btn small success-soft" type="button" id="approvePopoverConfirm">Confirm approve</button>
@@ -170,10 +172,10 @@
     </div>
     <div id="taskRejectPopover" class="task-action-popover" aria-hidden="true">
         <strong id="rejectPopoverTitle">Reject task</strong>
-        <label class="field-label" for="rejectPopoverReason">Lý do từ chối *</label>
-        <textarea id="rejectPopoverReason" maxlength="300" placeholder="Mô tả cần sửa gì..."></textarea>
+        <label class="field-label" for="rejectPopoverReason">Rejection reason *</label>
+        <textarea id="rejectPopoverReason" maxlength="300" placeholder="Describe what needs to be fixed..."></textarea>
         <div class="popover-counter" id="rejectPopoverCounter">0 / 300</div>
-        <p class="popover-helper">Bắt buộc — người nhận task cần biết phải sửa gì.</p>
+        <p class="popover-helper">Required — the assignee needs to know what to fix.</p>
         <div class="popover-actions">
             <button class="btn small" type="button" data-popover-cancel="reject">Cancel</button>
             <button class="btn small danger-soft" type="button" id="rejectPopoverConfirm" disabled>Confirm reject</button>

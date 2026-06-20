@@ -42,7 +42,7 @@
         chapterId: Number(configScript.getAttribute('data-chapter-id')),
         pageStart: Number(configScript.getAttribute('data-page-start')),
         pageEnd: Number(configScript.getAttribute('data-page-end')),
-        taskType: configScript.getAttribute('data-task-type') || '',
+        taskTypes: configScript.getAttribute('data-task-types') || '',
         status: configScript.getAttribute('data-status') || '',
         canUpdate: configScript.getAttribute('data-can-update') === 'true',
         canSubmit: configScript.getAttribute('data-can-submit') === 'true',
@@ -229,7 +229,7 @@
         progressEl.innerHTML =
             '<div class="page-progress-wrap">'
             + '<div class="page-progress-label">Task #' + escapeHtml(PAGE_TASK.taskId)
-            + ' · ' + escapeHtml(PAGE_TASK.taskType)
+            + ' · ' + escapeHtml(PAGE_TASK.taskTypes)
             + ' · Pages ' + PAGE_TASK.pageStart + '–' + PAGE_TASK.pageEnd
             + ' (' + uploaded + '/' + total + ' uploaded) · ' + pct + '%</div>'
             + '<div class="page-progress-bar-bg">'
@@ -262,11 +262,11 @@
             // "inherited" = ảnh lấy từ chapter (base image), không phải task upload trực tiếp
             var inherited = String(img.note || '').toUpperCase() === 'CHAPTER_PAGE' || !img.id;
             var approvedBadge = isApproved
-                ? '<span class="approved-badge" title="Đã được Mangaka duyệt, ảnh đã cập nhật vào chapter">✓ Approved</span>'
+                ? '<span class="approved-badge" title="Approved by Mangaka, image has been updated to the chapter">✓ Approved</span>'
                 : (inherited ? '<span class="approved-badge" title="Base image from chapter">Base image</span>' : '');
             html += approvedBadge
                 + '<img class="page-card-thumb" src="' + escapeHtml(url) + '" alt="Page ' + pageNum
-                + (isApproved ? ' title="Đã được Mangaka duyệt, ảnh đã cập nhật vào chapter"' : '')
+                + (isApproved ? ' title="Approved by Mangaka, image has been updated to the chapter"' : '')
                 + ' />'
                 + '<div class="page-card-footer">'
                 + '<div class="page-card-meta"><strong>Page ' + pageNum + '</strong>'
@@ -364,7 +364,7 @@
         var disabledAttr = complete ? '' : ' disabled';
         var tooltip = complete
             ? ''
-            : ' title="Vui lòng upload đủ ' + total + ' trang trước khi nộp"';
+            : ' title="Please upload all ' + total + ' pages before submitting"';
 
         submitBarEl.innerHTML =
             '<div class="sticky-submit-bar">'
@@ -409,7 +409,7 @@
     // Chặn nếu đang có upload khác đang chạy
     function pickFile(pageNum, action) {
         if (loadingPage !== null) {
-            showToast('Đang upload trang khác, vui lòng đợi.', 'error');
+            showToast('Another page is uploading, please wait.', 'error');
             return;
         }
         pendingPageNum = pageNum;
@@ -527,7 +527,7 @@
     async function handleSubmit() {
         var total = totalPages();
         if (uploadedCount() < total) {
-            showToast('Vui lòng upload đủ ' + total + ' trang trước khi nộp.', 'error');
+            showToast('Please upload all ' + total + ' pages before submitting.', 'error');
             return;
         }
         var btn = document.getElementById('pageSubmitBtn');
@@ -621,7 +621,7 @@
             }
             // Cảnh báo file > 10MB nhưng vẫn cho upload nếu user confirm
             if (file.size > 10 * 1024 * 1024) {
-                if (!confirm('File lớn hơn 10MB. Bạn có chắc muốn upload?')) {
+                if (!confirm('File is larger than 10MB. Are you sure you want to upload?')) {
                     return;
                 }
             }

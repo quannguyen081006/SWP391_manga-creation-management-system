@@ -166,10 +166,10 @@ public class PageRepository {
      */
     private static final String LIST_SQL =
             "SELECT p.id, p.chapterId, p.pageNumber, p.imageUrl, p.uploadedBy, p.uploadedAt, p.status, p.completedStage, "
-            + "t.id AS taskId, t.taskType, t.status AS taskStatus, t.assistantId, u.fullName AS assistantName "
+            + "t.id AS taskId, p.completedStage AS taskType, t.status AS taskStatus, t.assistantId, u.fullName AS assistantName "
             + "FROM " + TABLE_PAGE + " p "
             + "OUTER APPLY ( "
-            + "  SELECT TOP 1 pt.id, pt.taskType, pt.status, pt.assistantId "
+            + "  SELECT TOP 1 pt.id, pt.status, pt.assistantId "
             + "  FROM PageTask pt "
             + "  WHERE pt.chapterId = p.chapterId "
             + "    AND p.pageNumber BETWEEN pt.pageRangeStart AND pt.pageRangeEnd "

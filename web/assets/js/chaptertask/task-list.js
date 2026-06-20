@@ -202,6 +202,11 @@
         return String(status).toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
     }
 
+    function formatTaskTypes(taskTypes) {
+        var values = Array.isArray(taskTypes) ? taskTypes : String(taskTypes || '').split(',');
+        return values.filter(Boolean).map(formatStatus).join(', ');
+    }
+
     // Map status → CSS class cho status chip
     function statusClass(status) {
         status = String(status || '').toUpperCase();
@@ -352,16 +357,19 @@
     }
 
     // <select> chọn loại task (Sketching, Inking, Coloring, Lettering)
-    function renderTaskTypeSelect(selectedType) {
+    function renderTaskTypeSelect(selectedTypes) {
         var options = [
             { value: 'SKETCHING', label: 'Sketching' },
             { value: 'INKING', label: 'Inking' },
             { value: 'COLORING', label: 'Coloring' },
-            { value: 'LETTERING', label: 'Lettering' }
+            { value: 'SCREENTONE', label: 'Screentone' },
+            { value: 'LETTERING', label: 'Lettering' },
+            { value: 'MIXED', label: 'Mixed' }
         ];
-        var selected = String(selectedType || '').toUpperCase();
-        return '<select name="taskType" required><option value="">Select Task Type</option>' + options.map(function (option) {
-            return '<option value="' + option.value + '" ' + (option.value === selected ? 'selected' : '') + '>' + option.label + '</option>';
+        var selected = Array.isArray(selectedTypes) ? selectedTypes : String(selectedTypes || '').split(',');
+        selected = selected.map(function (value) { return String(value).toUpperCase(); });
+        return '<select name="taskTypes" multiple required>' + options.map(function (option) {
+            return '<option value="' + option.value + '" ' + (selected.indexOf(option.value) >= 0 ? 'selected' : '') + '>' + option.label + '</option>';
         }).join('') + '</select>';
     }
 
@@ -411,7 +419,13 @@
     function formToObject(form) {
         var data = {};
         var fd = new FormData(form);
-        fd.forEach(function (v, k) { data[k] = v; });
+        fd.forEach(function (v, k) {
+            if (Object.prototype.hasOwnProperty.call(data, k)) {
+                data[k] = [].concat(data[k], v);
+            } else {
+                data[k] = v;
+            }
+        });
         return data;
     }
 
@@ -710,12 +724,12 @@
         }
         return approvedNote
             + '<div class="task-view-chips">'
-            + '<span class="status-chip">' + escapeHtml(formatStatus(task.taskType)) + '</span>'
+            + '<span class="status-chip">' + escapeHtml(formatTaskTypes(task.taskTypes)) + '</span>'
             + '<span class="status-chip">Assigned: ' + escapeHtml(task.assistantName) + '</span>'
             + '<span class="status-chip">Pages ' + task.pageRangeStart + '-' + task.pageRangeEnd + '</span>'
             + renderStatusCell(task)
             + '</div>'
-            + '<p class="task-view-note">Approve / Reject được thực hiện trực tiếp từ bảng — modal này chỉ để xem và cập nhật tiến độ.</p>'
+            + '<p class="task-view-note">Approve / Reject is done directly from the table — this modal is only for viewing and updating progress.</p>'
             + feedback
             + (canEdit
                 ? ('<form id="taskViewUpdateForm" class="form-grid task-view-update-form task-view-update-form-layout">'
@@ -723,7 +737,7 @@
                     + '<input name="assistantId" type="hidden" value="' + task.assistantId + '" />'
                     + '<input name="pageRangeStart" type="hidden" value="' + task.pageRangeStart + '" />'
                     + '<input name="pageRangeEnd" type="hidden" value="' + task.pageRangeEnd + '" />'
-                    + '<input name="taskType" type="hidden" value="' + escapeHtml(task.taskType) + '" />'
+                    + '<input name="taskTypes" type="hidden" value="' + escapeHtml((task.taskTypes || []).join(',')) + '" />'
                     + '<label class="field-label" for="taskViewDueDate">Due date</label>'
                     + '<input id="taskViewDueDate" name="dueDate" type="date" value="' + escapeHtml(formatDate(task.dueDate)) + '"' + dueDateAttrs + ' required />'
                     + '<label class="field-label" for="taskViewPriority">Priority</label>'
@@ -733,7 +747,7 @@
                     + '<option value="URGENT"' + (task.priority === 'URGENT' ? ' selected' : '') + '>Urgent</option>'
                     + '</select>'
                     + '<label class="field-label" for="taskViewNotes">Notes / progress update</label>'
-                    + '<textarea id="taskViewNotes" name="notes" rows="4" placeholder="Ghi chú tiến độ cho assistant...">' + escapeHtml(task.notes || '') + '</textarea>'
+                    + '<textarea id="taskViewNotes" name="notes" rows="4" placeholder="Progress note for assistant...">' + escapeHtml(task.notes || '') + '</textarea>'
                     + '</form>')
                 : '<p class="section-desc">You can view this task but only the series owner Mangaka can update it.</p>')
             + renderImageForm(task);
@@ -850,7 +864,7 @@
         return '<strong>Task #' + task.id + ' Detail</strong>'
             + '<div class="inline-meta task-inline-meta-spaced">'
             + '<span>Pages: ' + task.pageRangeStart + '-' + task.pageRangeEnd + '</span>'
-            + '<span>Type: ' + formatStatus(task.taskType) + '</span>'
+            + '<span>Types: ' + formatTaskTypes(task.taskTypes) + '</span>'
             + '<span>Assigned: ' + escapeHtml(task.assistantName) + '</span>'
             + '<span>Status: ' + renderStatusCell(task) + '</span>'
             + '<span>Due Date: ' + formatDueDateCell(task) + '</span>'
@@ -886,7 +900,7 @@
                 + '<td>' + task.id + '</td>'
                 + '<td><strong>' + escapeHtml(task.seriesTitle) + '</strong><br/>Ch. ' + escapeHtml(task.chapterNumber) + ' - ' + escapeHtml(task.chapterTitle) + '</td>'
                 + '<td>' + task.pageRangeStart + '-' + task.pageRangeEnd + '</td>'
-                + '<td>' + formatStatus(task.taskType) + '</td>'
+                + '<td>' + formatTaskTypes(task.taskTypes) + '</td>'
                 + '<td>' + escapeHtml(task.assistantName) + '</td>'
                 + '<td>' + renderStatusCell(task) + '</td>'
                 + '<td>' + formatDueDateCell(task) + '</td>'
@@ -1151,7 +1165,7 @@
                     assistantId: createData.assistantId,
                     pageRangeStart: createData.pageRangeStart,
                     pageRangeEnd: createData.pageRangeEnd,
-                    taskType: createData.taskType,
+                    taskTypes: createData.taskTypes,
                     dueDate: createData.dueDate
                 });
                 showMessage('Task created successfully.', false);

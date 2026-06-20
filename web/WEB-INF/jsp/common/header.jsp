@@ -70,6 +70,7 @@
     else if (uri.contains("/tasks")) pageName = "Tasks";
     else if (uri.contains("/manuscript-review") || uri.contains("/manuscripts")) pageName = "Manuscript Reviews";
     else if (uri.contains("/ranking")) pageName = "Ranking";
+    else if (uri.contains("/salary")) pageName = "Salary & KPI";
     else if (uri.contains("/decisions")) pageName = "Decisions";
     else if (uri.contains("/profile")) pageName = "Profile";
     else if (uri.contains("/users")) pageName = "Users";
@@ -133,11 +134,29 @@
             <span class="nav-icon" aria-hidden="true"></span>
             <span class="nav-label">Ranking</span>
         </a>
+        <c:if test="${isMangaka}">
+            <a class="nav-item nav-salary ${fn:contains(uri, '/main/salary') ? 'active' : ''}" href="${ctx}/main/salary/periods" title="Assistant Salary & KPI">
+                <span class="nav-icon" aria-hidden="true"></span>
+                <span class="nav-label">Salary & KPI</span>
+            </a>
+        </c:if>
+        <c:if test="${isAssistant}">
+            <a class="nav-item nav-salary ${fn:contains(uri, '/main/salary/my') ? 'active' : ''}" href="${ctx}/main/salary/my" title="My Salary">
+                <span class="nav-icon" aria-hidden="true"></span>
+                <span class="nav-label">My Salary</span>
+            </a>
+        </c:if>
 
         <c:if test="${isAdmin}">
             <a class="nav-item nav-users ${fn:contains(uri, '/main/users') ? 'active' : ''}" href="${ctx}/main/users" title="Users">
                 <span class="nav-icon" aria-hidden="true"></span>
                 <span class="nav-label">Users</span>
+            </a>
+        </c:if>
+        <c:if test="${sessionScope.AUTH_USER != null && sessionScope.AUTH_USER.hasRole('ADMIN')}">
+            <a class="nav-item nav-settings ${fn:contains(uri, '/main/settings') ? 'active' : ''}" href="${ctx}/main/settings" title="Settings">
+                <span class="nav-icon" aria-hidden="true"></span>
+                <span class="nav-label">Settings</span>
             </a>
         </c:if>
 

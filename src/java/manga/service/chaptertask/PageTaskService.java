@@ -168,7 +168,7 @@ public class PageTaskService {
             long assistantId,
             int pageRangeStart,
             int pageRangeEnd,
-            String taskType,
+            List<String> taskTypes,
             String dueDate,
             String priority,
             String notes) {
@@ -184,7 +184,7 @@ public class PageTaskService {
                 assistantId,
                 pageRangeStart,
                 pageRangeEnd,
-                taskType == null || taskType.trim().isEmpty() ? "MIXED" : taskType,
+                taskTypes,
                 Date.valueOf(dueDate),
                 priority,
                 notes);
@@ -201,7 +201,7 @@ public class PageTaskService {
             long assistantId,
             int pageRangeStart,
             int pageRangeEnd,
-            String taskType,
+            List<String> taskTypes,
             String dueDate) {
         SessionUserUtil.requireRole(user, "MANGAKA", "Only MANGAKA can update task");
         pageTaskRepository.updateTaskByMangaka(
@@ -210,7 +210,7 @@ public class PageTaskService {
                 assistantId,
                 pageRangeStart,
                 pageRangeEnd,
-                taskType,
+                taskTypes,
                 Date.valueOf(dueDate));
         return pageTaskRepository.findById(taskId);
     }

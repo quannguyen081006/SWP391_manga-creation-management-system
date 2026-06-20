@@ -13,6 +13,8 @@ import manga.service.AnnotationServiceV2;
 import manga.service.ManuscriptVersionService;
 import manga.service.NotificationService;
 import manga.service.ProposalSettingsService;
+import manga.service.salary.SalarySettingsService;
+import manga.service.salary.TaskTypeRateService;
 import manga.service.chaptertask.ChapterService;
 import manga.service.chaptertask.PageTaskService;
 import manga.service.ProposalService;
@@ -91,6 +93,12 @@ public class ModuleWebController {
     @Autowired
     private ProposalSettingsService proposalSettingsService;
 
+    @Autowired
+    private SalarySettingsService salarySettingsService;
+
+    @Autowired
+    private TaskTypeRateService taskTypeRateService;
+
     @RequestMapping(value = "/proposals/{id}/edit", method = RequestMethod.GET)
     public String proposalEditPage(@PathVariable("id") long id, HttpSession session, Model model) {
         AuthenticatedUser user = requireUser(session);
@@ -130,6 +138,63 @@ public class ModuleWebController {
             model.addAttribute("lockIdentityFields", "DRAFT".equalsIgnoreCase(proposal.getStatus()) && proposal.getSubmitAttemptCount() == 0);
             return "proposal/edit";
         }
+    }
+
+    @RequestMapping(value = "/settings", method = RequestMethod.GET)
+    public String settingsHub(HttpSession session, Model model) {
+        AuthenticatedUser user = requireUser(session);
+        requireAdmin(user);
+        return "settings/hub";
+    }
+
+    @RequestMapping(value = "/settings/salary/task-types/{code}/update", method = RequestMethod.POST)
+    public String taskTypeRateUpdate(
+            @PathVariable("code") String code,
+            HttpSession session,
+            @RequestParam("ratePerPage") java.math.BigDecimal ratePerPage,
+            RedirectAttributes redirectAttributes,
+            Model model) {
+        AuthenticatedUser user = requireUser(session);
+        try {
+            taskTypeRateService.updateRate(code, ratePerPage, user);
+            redirectAttributes.addFlashAttribute("success", "Task type rate updated successfully");
+            return "redirect:/main/settings/salary";
+        } catch (RuntimeException ex) {
+            model.addAttribute("error", ex.getMessage());
+            model.addAttribute("settings", salarySettingsService.getSettings());
+            model.addAttribute("taskTypes", taskTypeRateService.listAll(user));
+            return "settings/salary/index";
+        }
+    }
+
+    @RequestMapping(value = "/settings/salary", method = RequestMethod.GET)
+    public String salarySettings(HttpSession session, Model model) {
+        AuthenticatedUser user = requireUser(session);
+        requireAdmin(user);
+        model.addAttribute("settings", salarySettingsService.getSettings());
+        model.addAttribute("taskTypes", taskTypeRateService.listAll(user));
+        return "settings/salary/index";
+    }
+
+    @RequestMapping(value = "/settings/salary", method = RequestMethod.POST)
+    public String salarySettingsSave(
+            HttpSession session,
+            @RequestParam("kpiBonusThreshold") Integer kpiBonusThreshold,
+            @RequestParam("bonusPercent") java.math.BigDecimal bonusPercent,
+            @RequestParam("penaltyPerLateTask") java.math.BigDecimal penaltyPerLateTask,
+            Model model) {
+        AuthenticatedUser user = requireUser(session);
+        try {
+            requireAdmin(user);
+            salarySettingsService.updateSettings(
+                    kpiBonusThreshold.intValue(), bonusPercent, penaltyPerLateTask);
+            model.addAttribute("success", "Salary settings updated successfully");
+        } catch (RuntimeException ex) {
+            model.addAttribute("error", ex.getMessage());
+        }
+        model.addAttribute("settings", salarySettingsService.getSettings());
+        model.addAttribute("taskTypes", taskTypeRateService.listAll(user));
+        return "settings/salary/index";
     }
 
     @RequestMapping(value = "/settings/proposals", method = RequestMethod.GET)

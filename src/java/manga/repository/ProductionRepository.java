@@ -304,7 +304,10 @@ public class ProductionRepository {
 
     public List<TaskSummary> listTasks() {
         String sql =
-            "SELECT t.id, t.chapterId, t.assistantId, t.pageRangeStart, t.pageRangeEnd, t.taskType, t.dueDate, t.status, t.rejectionCount, "
+            "SELECT t.id, t.chapterId, t.assistantId, t.pageRangeStart, t.pageRangeEnd, "
+            + "STUFF((SELECT ',' + pts.taskTypeCode FROM PageTaskStage pts WHERE pts.taskId = t.id "
+            + "ORDER BY pts.taskTypeCode FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 1, '') AS taskTypes, "
+            + "t.dueDate, t.status, t.rejectionCount, "
             + "CAST(CASE WHEN t.status IN ('PENDING','IN_PROGRESS','REJECTED') "
             + "AND DATEDIFF(DAY, t.assignedAt, GETDATE()) >= 3 "
             + "AND DATEDIFF(DAY, t.updatedAt, GETDATE()) >= 3 THEN 1 ELSE 0 END AS BIT) AS isDelayed, "
@@ -326,7 +329,12 @@ public class ProductionRepository {
                 t.setAssistantId(rs.getLong("assistantId"));
                 t.setPageRangeStart(rs.getInt("pageRangeStart"));
                 t.setPageRangeEnd(rs.getInt("pageRangeEnd"));
-                t.setTaskType(rs.getString("taskType"));
+                List<String> taskTypes = new ArrayList<String>();
+                String taskTypesValue = rs.getString("taskTypes");
+                if (taskTypesValue != null && !taskTypesValue.trim().isEmpty()) {
+                    taskTypes.addAll(java.util.Arrays.asList(taskTypesValue.split(",")));
+                }
+                t.setTaskTypes(taskTypes);
                 t.setDueDate(rs.getDate("dueDate"));
                 t.setStatus(rs.getString("status"));
                 t.setRejectionCount(rs.getInt("rejectionCount"));

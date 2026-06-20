@@ -19,7 +19,7 @@
  * 11. PAGE SELECTION — findPageById, getSelectedPages, isPageFullyComplete, isAssignablePage,
  *                      toggleSelectedPage, countUploaded, pageStageScore, pageCompletionPercent,
  *                      countFullyCompletePages, slotStateClass
- * 12. RENDER — renderSelectionBar, renderAssignChips, nextTaskTypeForPages, groupConsecutivePages,
+ * 12. RENDER — renderSelectionBar, renderAssignChips, nextTaskTypeForPages,
  *              setDefaultAssignTaskType, renderPageGrid, renderPageProgress, renderSidebarTasks,
  *              updateManuscriptWorkspaceButton, renderMeta
  * 13. TASK HELPERS — findTask, findTaskByPageNumber, isTaskOverdue, formatDueDateCell, renderTaskRowActions, renderChapterTasks
@@ -266,6 +266,11 @@
         });
     }
 
+    function formatTaskTypes(taskTypes) {
+        var values = Array.isArray(taskTypes) ? taskTypes : String(taskTypes || '').split(',');
+        return values.filter(Boolean).map(formatStatus).join(', ');
+    }
+
     /** Hiển thị / ẩn lỗi trong modal upload page (#pageUploadError) */
     function showPageUploadError(message) {
         var el = document.getElementById('pageUploadError');
@@ -362,7 +367,7 @@
         }
         for (var j = 0; j <= highest; j++) {
             if (!boxes[j].checked) {
-                throw new Error('Stage phải tick theo thứ tự từ Sketching trước.');
+                throw new Error('Stages must be checked in order, starting from Sketching.');
             }
         }
         return highest >= 0 ? pageStageOrder[highest] : '';
@@ -728,7 +733,7 @@
             return;
         }
         bar.classList.add('visible');
-        document.getElementById('selectionLabel').textContent = selected.length + ' trang đã chọn ('
+        document.getElementById('selectionLabel').textContent = selected.length + ' pages selected ('
                 + selected[0].pageNumber + (selected.length > 1 ? '–' + selected[selected.length - 1].pageNumber : '') + ')';
     }
 
@@ -740,13 +745,13 @@
         var el = document.getElementById('assignPageChips');
         var selected = getSelectedPages();
         if (!selected.length) {
-            el.innerHTML = '<span class="section-desc chapter-detail-inline-67">Chưa chọn trang — chọn trên lưới Pages trước khi gán.</span>';
+            el.innerHTML = '<span class="section-desc chapter-detail-inline-67">No pages selected — select from the Pages grid before assigning.</span>';
             document.getElementById('assignTaskSubmit').disabled = true;
             return;
         }
         document.getElementById('assignTaskSubmit').disabled = false;
         el.innerHTML = selected.map(function (p) {
-            return '<span class="assign-chip">Trang ' + p.pageNumber + '</span>';
+            return '<span class="assign-chip">Page ' + p.pageNumber + '</span>';
         }).join('');
     }
 
@@ -774,28 +779,6 @@
         return mixed ? 'MIXED' : first;
     }
 
-    /**
-     * Nhóm các page liên tiếp lại với nhau.
-     * VD: [1,2,3,5,6] → [[1,2,3],[5,6]]
-     * Dùng để tạo nhiều task khi user chọn các page không liên tiếp.
-     */
-    function groupConsecutivePages(selected) {
-        var groups = [];
-        var current = [];
-        selected.forEach(function (page) {
-            if (!current.length || page.pageNumber === current[current.length - 1].pageNumber + 1) {
-                current.push(page);
-            } else {
-                groups.push(current);
-                current = [page];
-            }
-        });
-        if (current.length) {
-            groups.push(current);
-        }
-        return groups;
-    }
-
     /** Cập nhật phần tóm tắt taskType trong modal gán task */
     function setDefaultAssignTaskType() {
         var summary = document.getElementById('assignTaskTypeSummary');
@@ -804,7 +787,7 @@
         }
         var selected = getSelectedPages();
         if (!selected.length) {
-            summary.textContent = 'Tự tính theo stage tiếp theo của từng trang.';
+            summary.textContent = 'Automatically calculated based on each page\'s next stage.';
             return;
         }
         summary.innerHTML = selected.map(function (p) {
@@ -824,9 +807,9 @@
         var grid = document.getElementById('pageSlotGrid');
         var owner = isOwner();
         if (!pageSlots.length) {
-            grid.innerHTML = '<p class="chapter-detail-inline-68">Chưa có ô trang. '
-                    + (owner ? 'Nhấn + Thêm trang để bắt đầu.' : 'No page slots yet.') + '</p>'
-                    + (owner ? '<div class="page-slot page-slot-add chapter-detail-inline-69" data-add-page="1" title="Thêm trang">+</div>' : '');
+            grid.innerHTML = '<p class="chapter-detail-inline-68">No page slots yet. '
+                    + (owner ? 'Click + Add page to get started.' : 'No page slots yet.') + '</p>'
+                    + (owner ? '<div class="page-slot page-slot-add chapter-detail-inline-69" data-add-page="1" title="Add page">+</div>' : '');
             return;
         }
 
@@ -840,16 +823,16 @@
             var state = slotStateClass(slot);
             var inProgressTaskCls = String(slot.taskStatus || '').toUpperCase() === 'IN_PROGRESS' ? ' task-in-progress' : '';
             var inProgressTaskIcon = inProgressTaskCls
-                    ? '<span class="page-slot-status-icon icon-in-progress">●<span class="icon-tooltip">Đang làm</span></span>'
+                    ? '<span class="page-slot-status-icon icon-in-progress">●<span class="icon-tooltip">In progress</span></span>'
                     : '';
             var submittedTaskCls = String(slot.taskStatus || '').toUpperCase() === 'SUBMITTED' ? ' task-submitted' : '';
             var submittedTaskIcon = submittedTaskCls
-                    ? '<span class="page-slot-status-icon icon-submitted">●<span class="icon-tooltip">Đã nộp</span></span>'
+                    ? '<span class="page-slot-status-icon icon-submitted">●<span class="icon-tooltip">Submitted</span></span>'
                     : '';
             var completeStageCls = normalizeStage(slot.completedStage) === 'LETTERING' ? ' stage-complete' : '';
             var cls = 'page-slot ' + state + inProgressTaskCls + submittedTaskCls + completeStageCls + (selected ? ' state-selected' : '');
             var num = '<span class="page-slot-num">' + slot.pageNumber + '</span>';
-            var lockIconHtml = slot.taskId ? '<span class="page-slot-lock" title="Trang này đã được gán task">🔒</span>' : '';
+            var lockIconHtml = slot.taskId ? '<span class="page-slot-lock" title="This page already has an assigned task">🔒</span>' : '';
             var inner = '';
             if (state === 'state-empty') {
                 inner = '<span class="page-slot-upload-label">+ Upload</span>';
@@ -866,7 +849,7 @@
         }).join('');
 
         if (owner) {
-            html += '<div class="page-slot page-slot-add" data-add-page="1" title="Thêm trang">+</div>';
+            html += '<div class="page-slot page-slot-add" data-add-page="1" title="Add page">+</div>';
         }
         grid.innerHTML = html;
         renderSelectionBar();
@@ -880,7 +863,7 @@
         var pct = pageCompletionPercent();
         document.getElementById('progressLabel').textContent = pct + '% (' + completePages + ' / ' + total + ' pages complete)';
         document.getElementById('progressFill').style.width = pct + '%';
-        document.getElementById('pageCountLabel').textContent = uploaded + ' / ' + total + ' đã upload';
+        document.getElementById('pageCountLabel').textContent = uploaded + ' / ' + total + ' uploaded';
         document.getElementById('tabPageCount').textContent = total;
         document.getElementById('metaPages').textContent = uploaded + ' / ' + total;
         document.getElementById('metaProgress').textContent = pct + '% page';
@@ -890,18 +873,18 @@
     function renderSidebarTasks() {
         var el = document.getElementById('sidebarTaskList');
         if (!chapterTasks.length) {
-            el.innerHTML = '<p class="section-desc chapter-detail-inline-70">Chưa có task.</p>';
+            el.innerHTML = '<p class="section-desc chapter-detail-inline-70">No tasks yet.</p>';
             return;
         }
         var preview = chapterTasks.slice(0, 5);
         el.innerHTML = preview.map(function (t) {
             return '<div class="sidebar-task-mini">'
                     + '<strong>#' + t.id + '</strong> p.' + t.pageRangeStart + '-' + t.pageRangeEnd
-                    + ' · ' + escapeHtml(formatStatus(t.taskType))
+                    + ' · ' + escapeHtml(formatTaskTypes(t.taskTypes))
                     + '<br/><span class="status-chip ' + taskStatusClass(t.status) + ' chapter-detail-inline-71">' + formatStatus(t.status) + '</span>'
                     + '</div>';
         }).join('')
-                + (chapterTasks.length > 5 ? '<p class="section-desc chapter-detail-inline-72">+' + (chapterTasks.length - 5) + ' task khác — xem tab Tasks</p>' : '');
+                + (chapterTasks.length > 5 ? '<p class="section-desc chapter-detail-inline-72">+' + (chapterTasks.length - 5) + ' more tasks — see the Tasks tab</p>' : '');
     }
 
     /**
@@ -1147,14 +1130,14 @@
             return '<tr>'
                     + '<td>' + task.id + '</td>'
                     + '<td>' + task.pageRangeStart + '-' + task.pageRangeEnd + '</td>'
-                    + '<td>' + formatStatus(task.taskType) + '</td>'
+                    + '<td>' + formatTaskTypes(task.taskTypes) + '</td>'
                     + '<td>' + escapeHtml(task.assistantName || '') + '</td>'
                     + '<td><span class="status-chip ' + taskStatusClass(task.status) + '">' + formatStatus(task.status) + '</span></td>'
                     + '<td>' + formatDueDateCell(task) + '</td>'
                     + '<td class="task-actions-cell"><div class="task-row-actions">' + renderTaskRowActions(task) + '</div></td>'
                     + '</tr>'
                     + '<tr class="task-inline-row chapter-detail-inline-73" id="task-inline-' + task.id + '">'
-                    + '<td colspan="7"><div class="task-inline-body" id="task-inline-body-' + task.id + '">Đang tải...</div></td>'
+                    + '<td colspan="7"><div class="task-inline-body" id="task-inline-body-' + task.id + '">Loading...</div></td>'
                     + '</tr>';
         }).join('');
         renderSidebarTasks();
@@ -1179,7 +1162,7 @@
             return;
         }
         if (!taskInlineLoaded[taskId]) {
-            bodyEl.innerHTML = '<span class="chapter-detail-inline-74">Đang tải...</span>';
+            bodyEl.innerHTML = '<span class="chapter-detail-inline-74">Loading...</span>';
             try {
                 var res = await callApi('GET', '/api/v1/tasks/' + taskId + '/images');
                 var imgs = res.data || res || [];
@@ -1197,9 +1180,9 @@
                     } else {
                         html += '<div class="no-thumb">+</div>';
                     }
-                    html += '<div>Trang ' + p + '</div></div>';
+                    html += '<div>Page ' + p + '</div></div>';
                 }
-                bodyEl.innerHTML = html || '<span class="chapter-detail-inline-75">Chưa có ảnh nào.</span>';
+                bodyEl.innerHTML = html || '<span class="chapter-detail-inline-75">No images yet.</span>';
                 taskInlineLoaded[taskId] = true;
             } catch (e) {
                 bodyEl.innerHTML = '<span class="chapter-detail-inline-76">' + escapeHtml(e.message) + '</span>';
@@ -1219,14 +1202,14 @@
         var title = document.getElementById('pageCompareTitle');
         var body = document.getElementById('pageCompareBody');
         modal.style.display = 'flex';
-        title.textContent = 'Trang ' + slot.pageNumber;
+        title.textContent = 'Page ' + slot.pageNumber;
         var ts = String(slot.taskStatus || '').toUpperCase();
         var origUrl = slot.imageUrl ? imageUrl(slot.imageUrl) : null;
         if (!slot.taskId || (ts !== 'SUBMITTED' && ts !== 'APPROVED')) {
             body.innerHTML = origUrl
                     ? (isOwner() && !slot.taskId ? '<div class="chapter-detail-inline-77"><button class="btn small primary" type="button" id="pageCompareEdit">Upload / replace</button></div>' : '')
                     + '<img src="' + escapeHtml(origUrl) + '" class="chapter-detail-inline-78" />'
-                    : '<div class="chapter-detail-inline-79">Chưa có ảnh</div>';
+                    : '<div class="chapter-detail-inline-79">No image</div>';
             var editBtn = document.getElementById('pageCompareEdit');
             if (editBtn) {
                 editBtn.addEventListener('click', function () {
@@ -1239,7 +1222,7 @@
         // Cần ảnh task: dùng cache hoặc gọi API
         var taskImgs = taskImagesCache[slot.taskId];
         if (!taskImgs) {
-            body.innerHTML = '<div class="chapter-detail-inline-80">Đang tải ảnh...</div>';
+            body.innerHTML = '<div class="chapter-detail-inline-80">Loading image...</div>';
             try {
                 var res = await callApi('GET', '/api/v1/tasks/' + slot.taskId + '/images');
                 taskImgs = res.data || res || [];
@@ -1261,20 +1244,20 @@
             // 2-column compare: ảnh gốc vs ảnh assistant nộp
             body.innerHTML =
                     '<div class="chapter-detail-inline-81">'
-                    + '<div><div class="chapter-detail-inline-82">Bản gốc (Mangaka)</div>'
-                    + (origUrl ? '<img src="' + escapeHtml(origUrl) + '" class="chapter-detail-inline-83" />' : '<div class="chapter-detail-inline-84">Không có ảnh gốc</div>')
+                    + '<div><div class="chapter-detail-inline-82">Original (Mangaka)</div>'
+                    + (origUrl ? '<img src="' + escapeHtml(origUrl) + '" class="chapter-detail-inline-83" />' : '<div class="chapter-detail-inline-84">No original image</div>')
                     + '</div>'
-                    + '<div><div class="chapter-detail-inline-85">Bản assistant nộp</div>'
-                    + (assistantUrl ? '<img src="' + escapeHtml(assistantUrl) + '" class="chapter-detail-inline-86" />' : '<div class="chapter-detail-inline-87">Chưa có ảnh</div>')
+                    + '<div><div class="chapter-detail-inline-85">Assistant\'s submission</div>'
+                    + (assistantUrl ? '<img src="' + escapeHtml(assistantUrl) + '" class="chapter-detail-inline-86" />' : '<div class="chapter-detail-inline-87">No image</div>')
                     + '</div></div>';
             return;
         }
         // APPROVED: hiện ảnh đã duyệt
         var finalUrl = assistantUrl || origUrl;
         body.innerHTML = finalUrl
-                ? '<div class="chapter-detail-inline-88"><span class="chapter-detail-inline-89">✓ Đã được duyệt</span></div>'
+                ? '<div class="chapter-detail-inline-88"><span class="chapter-detail-inline-89">✓ Approved</span></div>'
                 + '<img src="' + escapeHtml(finalUrl) + '" class="chapter-detail-inline-90" />'
-                : '<div class="chapter-detail-inline-91">Không có ảnh</div>';
+                : '<div class="chapter-detail-inline-91">No image</div>';
     }
 
     // ============================================================
@@ -1427,7 +1410,7 @@
         document.getElementById('taskOverdueDecisionTitle').textContent = 'Overdue task #' + taskId;
         document.getElementById('taskOverdueDecisionSummary').textContent =
                 'Pages ' + task.pageRangeStart + '-' + task.pageRangeEnd + ' · '
-                + formatStatus(task.taskType) + ' · assigned to ' + (task.assistantName || ('#' + task.assistantId));
+                + formatTaskTypes(task.taskTypes) + ' · assigned to ' + (task.assistantName || ('#' + task.assistantId));
 
         var latest = latestTaskDueDate();
         var dueInput = document.getElementById('taskExtendDueDate');
@@ -1877,8 +1860,8 @@
     });
 
     /**
-     * Form gán task: nhóm các page đã chọn thành nhóm liên tiếp,
-     * tạo task riêng cho mỗi nhóm với taskType tự động theo stage.
+     * Form gán task: gom toàn bộ page đã chọn vào một task duy nhất.
+     * taskType tự động (MIXED nếu các page ở stage khác nhau).
      */
     document.getElementById('assignTaskForm').addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -1887,23 +1870,18 @@
         var selected = getSelectedPages();
         if (!selected.length) {
             errEl.style.display = 'block';
-            errEl.textContent = 'Chọn ít nhất một trang trên lưới Pages.';
+            errEl.textContent = 'Select at least one page from the Pages grid.';
             return;
         }
-        var groups = groupConsecutivePages(selected);
+        selected.sort(function (a, b) { return a.pageNumber - b.pageNumber; });
         try {
-            for (var g = 0; g < groups.length; g++) {
-                var group = groups[g];
-                await callApi('POST', '/api/v1/chapters/' + chapterId + '/tasks', {
-                    assistantId: document.getElementById('assignAssistantId').value,
-                    pageRangeStart: group[0].pageNumber,
-                    pageRangeEnd: group[group.length - 1].pageNumber,
-                    taskType: nextTaskTypeForPages(group),
-                    dueDate: document.getElementById('assignDueDate').value,
-                    priority: document.getElementById('assignPriority').value,
-                    notes: document.getElementById('assignNotes').value
-                });
-            }
+            await callApi('POST', '/api/v1/chapters/' + chapterId + '/tasks', {
+                assistantId: document.getElementById('assignAssistantId').value,
+                pageRangeStart: selected[0].pageNumber,
+                pageRangeEnd: selected[selected.length - 1].pageNumber,
+                dueDate: document.getElementById('assignDueDate').value,
+                notes: document.getElementById('assignNotes').value
+            });
             selectedPageIds = {};
             e.target.reset();
             closeModals();
@@ -1925,7 +1903,7 @@
         var reason = document.getElementById('taskReassignReason').value.trim();
         if (reason.length < 5) {
             errEl.style.display = 'block';
-            errEl.textContent = 'Lý do reassign phải có ít nhất 5 ký tự.';
+            errEl.textContent = 'Reassign reason must be at least 5 characters.';
             return;
         }
         try {
@@ -2084,7 +2062,7 @@
         var taskDeleteBtn = e.target.closest('[data-task-delete]');
         if (taskDeleteBtn) {
             var deleteTaskId = taskDeleteBtn.getAttribute('data-task-delete');
-            var reason = prompt('Lý do xóa task #' + deleteTaskId + ':');
+            var reason = prompt('Reason for deleting task #' + deleteTaskId + ':');
             if (!reason) {
                 return;
             }

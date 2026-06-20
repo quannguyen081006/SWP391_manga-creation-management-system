@@ -81,26 +81,26 @@
 --%>
         <div id="tabPages" class="chapter-tab-panel">
             <div class="pages-toolbar">
-                <span id="pageCountLabel" class="chapter-detail-inline-13">Đang tải...</span>
+                <span id="pageCountLabel" class="chapter-detail-inline-13">Loading...</span>
                 <div id="pagesOwnerActions" class="chapter-detail-inline-14">
-                    <button class="btn small primary" type="button" id="btnAddPage">+ Thêm trang</button>
+                    <button class="btn small primary" type="button" id="btnAddPage">+ Add page</button>
                     <input id="singleFileInput" type="file" accept="image/*" class="chapter-detail-inline-15" />
                 </div>
             </div>
 
             <div id="pagesHint" class="pages-hint chapter-detail-inline-16">
-                Chọn các trang trống hoặc đã upload để gán task cho assistant.
+                Select empty or uploaded pages to assign a task to an assistant.
             </div>
 
             <div id="selectionBar" class="pages-selection-bar">
-                <span id="selectionLabel" class="chapter-detail-inline-17">0 trang đã chọn</span>
+                <span id="selectionLabel" class="chapter-detail-inline-17">0 pages selected</span>
                 <div class="chapter-detail-inline-18">
-                    <button class="btn small primary" type="button" id="btnAssignFromSelection">Gán task</button>
-                    <button class="btn small" type="button" id="btnClearSelection">Bỏ chọn</button>
+                    <button class="btn small primary" type="button" id="btnAssignFromSelection">Assign task</button>
+                    <button class="btn small" type="button" id="btnClearSelection">Clear selection</button>
                 </div>
             </div>
             <div id="pageSlotGrid" class="page-slot-grid">
-                <p class="chapter-detail-inline-19">Đang tải trang...</p>
+                <p class="chapter-detail-inline-19">Loading pages...</p>
             </div>
 <%-- 
     [5a.1] PROGRESS BAR: thanh tiến độ chapter
@@ -109,7 +109,7 @@
 --%>
             <div id="progressSection">
                 <div class="chapter-detail-inline-20">
-                    <span class="chapter-detail-inline-21">Tiến độ page</span>
+                    <span class="chapter-detail-inline-21">Page progress</span>
                     <span id="progressLabel" class="chapter-detail-inline-22"></span>
                 </div>
                 <div class="progress"><span id="progressFill" class="chapter-detail-inline-23"></span></div>
@@ -146,8 +146,8 @@
                 <div id="taskApprovePopover" class="task-action-popover" aria-hidden="true">
                     <strong id="approvePopoverTitle">Approve task</strong>
                     <label class="field-label" for="approvePopoverComment">Comment (optional)</label>
-                    <textarea id="approvePopoverComment" maxlength="300" placeholder="Ghi chú cho assistant (tuỳ chọn)"></textarea>
-                    <p class="popover-helper">Không điền vẫn có thể approve bình thường.</p>
+                    <textarea id="approvePopoverComment" maxlength="300" placeholder="Note for assistant (optional)"></textarea>
+                    <p class="popover-helper">You can approve without filling this in.</p>
                     <div class="popover-actions">
                         <button class="btn small" type="button" data-popover-cancel="approve">Cancel</button>
                         <button class="btn small success-soft" type="button" id="approvePopoverConfirm">Confirm approve</button>
@@ -155,10 +155,10 @@
                 </div>
                 <div id="taskRejectPopover" class="task-action-popover" aria-hidden="true">
                     <strong id="rejectPopoverTitle">Reject task</strong>
-                    <label class="field-label" for="rejectPopoverReason">Lý do từ chối *</label>
-                    <textarea id="rejectPopoverReason" maxlength="300" placeholder="Mô tả cần sửa gì..."></textarea>
+                    <label class="field-label" for="rejectPopoverReason">Rejection reason *</label>
+                    <textarea id="rejectPopoverReason" maxlength="300" placeholder="Describe what needs to be fixed..."></textarea>
                     <div class="popover-counter" id="rejectPopoverCounter">0 / 300</div>
-                    <p class="popover-helper">Bắt buộc — người nhận task cần biết phải sửa gì.</p>
+                    <p class="popover-helper">Required — the assignee needs to know what to fix.</p>
                     <div class="popover-actions">
                         <button class="btn small" type="button" data-popover-cancel="reject">Cancel</button>
                         <button class="btn small danger-soft" type="button" id="rejectPopoverConfirm" disabled>Confirm reject</button>
@@ -214,23 +214,23 @@
             </div>
         </div>
         <div class="panel chapter-detail-inline-46">
-            <strong class="chapter-detail-inline-47">Chú thích trạng thái trang</strong>
+            <strong class="chapter-detail-inline-47">Page status legend</strong>
             <div class="page-status-legend">
                 <div class="legend-row">
                     <span class="legend-swatch legend-empty"></span>
-                    <span><strong>Trống</strong>Chưa có ảnh page.</span>
+                    <span><strong>Empty</strong>No page image yet.</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-swatch legend-progress"></span>
-                    <span><strong>Đang làm</strong>Task của trang đang in progress.</span>
+                    <span><strong>In progress</strong>The page's task is in progress.</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-swatch legend-submitted"></span>
-                    <span><strong>Chờ duyệt</strong>Assistant đã submit task.</span>
+                    <span><strong>Pending review</strong>Assistant has submitted the task.</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-swatch legend-complete-solid"></span>
-                    <span><strong>Hoàn tất</strong>Page đã xong đủ 5 stage.</span>
+                    <span><strong>Done</strong>Page has completed all 5 stages.</span>
                 </div>
             </div>
         </div>
@@ -291,12 +291,12 @@ Mở khi: click "Compare" trên page slot đã có lịch sử upload--%>
 <div id="assignTaskModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="assignTaskTitle">
         <button class="modal-close" type="button" data-modal-close aria-label="Close">&times;</button>
-        <h3 id="assignTaskTitle" class="section-title compact-title">Gán task cho trang</h3>
+        <h3 id="assignTaskTitle" class="section-title compact-title">Assign task to page</h3>
         <form id="assignTaskForm" class="form-grid">
-            <label class="field-label">Trang đã chọn</label>
-            <div id="assignPageChips" class="assign-chips"><span class="section-desc chapter-detail-inline-62">Chưa chọn trang — chọn trên lưới Pages hoặc mở từ sidebar sau khi chọn.</span></div>
+            <label class="field-label">Selected pages</label>
+            <div id="assignPageChips" class="assign-chips"><span class="section-desc chapter-detail-inline-62">No pages selected — select from the Pages grid or open from the sidebar after selecting.</span></div>
             <label class="field-label">Work to do</label>
-            <div id="assignTaskTypeSummary" class="assign-stage-summary section-desc chapter-detail-inline-63">Tự tính theo stage tiếp theo của từng trang.</div>
+            <div id="assignTaskTypeSummary" class="assign-stage-summary section-desc chapter-detail-inline-63">Automatically calculated based on each page's next stage.</div>
             <label class="field-label" for="assignAssistantId">Assistant</label>
             <select id="assignAssistantId" name="assistantId" required>
                 <option value="">Loading assistants...</option>
@@ -304,16 +304,10 @@ Mở khi: click "Compare" trên page slot đã có lịch sử upload--%>
             <label class="field-label" for="assignDueDate">Due date</label>
             <input id="assignDueDate" name="dueDate" type="date" required />
             <p id="assignDueHint" class="section-desc"></p>
-            <label class="field-label" for="assignPriority">Priority</label>
-            <select id="assignPriority" name="priority">
-                <option value="NORMAL">Normal</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-            </select>
             <label class="field-label" for="assignNotes">Notes</label>
-            <textarea id="assignNotes" name="notes" rows="3" placeholder="Hướng dẫn cho assistant..."></textarea>
+            <textarea id="assignNotes" name="notes" rows="3" placeholder="Instructions for assistant..."></textarea>
             <div id="assignTaskError" class="alert error chapter-detail-inline-64"></div>
-            <button class="btn primary" type="submit" id="assignTaskSubmit">Tạo task</button>
+            <button class="btn primary" type="submit" id="assignTaskSubmit">Create task</button>
         </form>
     </div>
 </div>
@@ -332,7 +326,7 @@ Mở khi: click "Compare" trên page slot đã có lịch sử upload--%>
                 <option value="">Loading assistants...</option>
             </select>
             <label class="field-label" for="taskReassignReason">Reason</label>
-            <textarea id="taskReassignReason" rows="3" maxlength="300" required placeholder="Lý do reassign..."></textarea>
+            <textarea id="taskReassignReason" rows="3" maxlength="300" required placeholder="Reason for reassignment..."></textarea>
             <div id="taskReassignError" class="alert error chapter-detail-inline-65"></div>
             <button class="btn primary" type="submit">Confirm reassign</button>
         </form>

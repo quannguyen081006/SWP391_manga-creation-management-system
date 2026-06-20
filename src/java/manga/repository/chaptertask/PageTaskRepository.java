@@ -15,6 +15,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.math.BigDecimal;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -89,7 +92,11 @@ public class PageTaskRepository {
 
     /** Các cột cơ bản của PageTask dùng trong SELECT */
     private static final String SQL_TASK_COLUMNS_BASE =
-            "t.id, t.chapterId, t.assistantId, t.pageRangeStart, t.pageRangeEnd, t.taskType, t.dueDate, t.status, t.rejectionCount, ";
+            "t.id, t.chapterId, t.assistantId, t.pageRangeStart, t.pageRangeEnd, "
+            + "STUFF((SELECT ',' + pts.taskTypeCode FROM PageTaskStage pts "
+            + "WHERE pts.taskId = t.id ORDER BY pts.taskTypeCode "
+            + "FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 1, '') AS taskTypes, "
+            + "t.dueDate, t.status, t.rejectionCount, ";
 
     /** Cache: DB có các cột mở rộng (priority, notes, ...) không? */
     private volatile Boolean taskSchemaExtended;
@@ -359,13 +366,69 @@ public class PageTaskRepository {
         }
     }
 
+    public List<Map<String, Object>> findApprovedTasksForSalary(
+            long periodId, long assistantId) {
+        String sql = "SELECT t.id, s.title AS seriesTitle, c.chapterNumber, "
+                + "pps.pageNumber, pps.taskTypeCode, t.dueDate, "
+                + "t.updatedAt AS approvedAt, tt.ratePerPage, "
+                + "CASE WHEN t.updatedAt <= DATEADD(DAY, 1, CAST(t.dueDate AS DATETIME)) "
+                + "THEN 1 ELSE 0 END AS onTime "
+                + "FROM PageTask t "
+                + "JOIN Chapter c ON c.id = t.chapterId "
+                + "JOIN Series s ON s.id = c.seriesId "
+                + "JOIN SalaryPeriod sp ON sp.id = ? AND sp.mangakaId = s.mangakaId "
+                + "JOIN PageTaskPageStage pps ON pps.taskId = t.id "
+                + "LEFT JOIN TaskType tt ON tt.code = pps.taskTypeCode "
+                + "WHERE t.assistantId = ? AND UPPER(t.status) = 'APPROVED' "
+                + "AND ((sp.status = 'OPEN' AND t.isSalaried = 0) "
+                + "OR (sp.status = 'SETTLED' AND t.isSalaried = 1 "
+                + "AND t.updatedAt <= sp.settledAt "
+                + "AND NOT EXISTS (SELECT 1 FROM SalaryPeriod earlier "
+                + "JOIN AssistantSalaryRecord er ON er.periodId = earlier.id "
+                + "AND er.assistantId = t.assistantId "
+                + "WHERE earlier.mangakaId = sp.mangakaId "
+                + "AND earlier.status = 'SETTLED' "
+                + "AND earlier.settledAt < sp.settledAt "
+                + "AND earlier.settledAt >= t.updatedAt))) "
+                + "ORDER BY s.title ASC, c.chapterNumber ASC, pps.pageNumber ASC";
+        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, periodId);
+            ps.setLong(2, assistantId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<String, Object>();
+                    BigDecimal rate = rs.getBigDecimal("ratePerPage");
+                    if (rate == null) {
+                        rate = BigDecimal.ZERO;
+                    }
+                    row.put("id", rs.getLong("id"));
+                    row.put("seriesTitle", rs.getString("seriesTitle"));
+                    row.put("chapterNumber", rs.getInt("chapterNumber"));
+                    row.put("pageNumber", rs.getInt("pageNumber"));
+                    row.put("taskType", rs.getString("taskTypeCode"));
+                    row.put("dueDate", rs.getDate("dueDate"));
+                    row.put("approvedAt", rs.getTimestamp("approvedAt"));
+                    row.put("ratePerPage", rate);
+                    row.put("onTime", rs.getBoolean("onTime"));
+                    row.put("amount", rate);
+                    rows.add(row);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot load approved salary tasks", ex);
+        }
+        return rows;
+    }
+
     // ============================================================
     // [4] TẠO & CẬP NHẬT TASK (Mangaka)
     // ============================================================
 
     /** Tạo task với priority mặc định NORMAL, không có notes */
-    public long create(long chapterId, long assistantId, int start, int end, String taskType, Date dueDate) {
-        return create(chapterId, assistantId, start, end, taskType, dueDate, "NORMAL", null);
+    public long create(long chapterId, long assistantId, int start, int end, List<String> taskTypes, Date dueDate) {
+        return create(chapterId, assistantId, start, end, taskTypes, dueDate, "NORMAL", null);
     }
 
     /**
@@ -376,26 +439,28 @@ public class PageTaskRepository {
      * - Mangaka không được tự giao cho chính mình (BR-35)
      * Sau khi tạo: gửi thông báo cho assistant và cập nhật tiến độ chapter.
      */
-    public long create(long chapterId, long assistantId, int start, int end, String taskType, Date dueDate, String priority, String notes) {
-        return create(chapterId, assistantId, start, end, taskType, dueDate, priority, notes, true);
+    public long create(long chapterId, long assistantId, int start, int end, List<String> taskTypes, Date dueDate, String priority, String notes) {
+        return create(chapterId, assistantId, start, end, taskTypes, dueDate, priority, notes, true);
     }
 
-    private long create(long chapterId, long assistantId, int start, int end, String taskType, Date dueDate,
+    private long create(long chapterId, long assistantId, int start, int end, List<String> taskTypes, Date dueDate,
             String priority, String notes, boolean notifyAssignment) {
         ensureTaskLifecycleSchemaReady();
         // Chỉ task đang active mới block tái sử dụng page range; task đã đóng thì không
         String overlapSql = "SELECT COUNT(1) FROM PageTask WHERE chapterId = ? AND UPPER(status) NOT IN (" + SQL_CLOSED_TASK_STATUSES + ") AND NOT (pageRangeEnd < ? OR pageRangeStart > ?)";
         String chapterSql = "SELECT c.submissionDeadline, c.seriesId, s.mangakaId FROM Chapter c JOIN Series s ON s.id = c.seriesId WHERE c.id = ?";
         String enrollmentSql = "SELECT COUNT(1) FROM MangakaAssistant WHERE mangakaId = ? AND assistantId = ?";
-        String insertExtendedSql = "INSERT INTO PageTask (chapterId, assistantId, pageRangeStart, pageRangeEnd, taskType, dueDate, status, rejectionCount, priority, notes, assignedAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, 'IN_PROGRESS', 0, ?, ?, GETDATE(), GETDATE())";
-        String insertLegacySql = "INSERT INTO PageTask (chapterId, assistantId, pageRangeStart, pageRangeEnd, taskType, dueDate, status, rejectionCount, assignedAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, 'IN_PROGRESS', 0, GETDATE(), GETDATE())";
+        String insertExtendedSql = "INSERT INTO PageTask (chapterId, assistantId, pageRangeStart, pageRangeEnd, dueDate, status, rejectionCount, priority, notes, assignedAt, updatedAt) VALUES (?, ?, ?, ?, ?, 'IN_PROGRESS', 0, ?, ?, GETDATE(), GETDATE())";
+        String insertLegacySql = "INSERT INTO PageTask (chapterId, assistantId, pageRangeStart, pageRangeEnd, dueDate, status, rejectionCount, assignedAt, updatedAt) VALUES (?, ?, ?, ?, ?, 'IN_PROGRESS', 0, GETDATE(), GETDATE())";
 
         try (Connection conn = dataSource.getConnection()) {
-            taskType = normalizeTaskType(taskType);
+            Map<Integer, String> pageStages = derivePageStagesForRange(conn, chapterId, start, end);
+            List<String> normalizedTaskTypes = summarizePageStages(pageStages);
             String normalizedPriority = normalizePriority(priority);
-            validateTaskAssignment(conn, 0L, chapterId, assistantId, start, end, taskType, dueDate, overlapSql, chapterSql, enrollmentSql);
+            validateTaskAssignment(conn, 0L, chapterId, assistantId, start, end, normalizedTaskTypes, dueDate, overlapSql, chapterSql, enrollmentSql);
 
             long newId;
+            conn.setAutoCommit(false);
             boolean extended = isTaskSchemaExtended();
             String insertSql = extended ? insertExtendedSql : insertLegacySql;
             try (PreparedStatement insert = conn.prepareStatement(insertSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
@@ -403,11 +468,10 @@ public class PageTaskRepository {
                 insert.setLong(2, assistantId);
                 insert.setInt(3, start);
                 insert.setInt(4, end);
-                insert.setString(5, taskType);
-                insert.setDate(6, dueDate);
+                insert.setDate(5, dueDate);
                 if (extended) {
-                    insert.setString(7, normalizedPriority);
-                    insert.setString(8, notes == null ? null : notes.trim());
+                    insert.setString(6, normalizedPriority);
+                    insert.setString(7, notes == null ? null : notes.trim());
                 }
                 insert.executeUpdate();
                 try (ResultSet rs = insert.getGeneratedKeys()) {
@@ -417,6 +481,9 @@ public class PageTaskRepository {
                     newId = rs.getLong(1);
                 }
             }
+            replaceTaskStages(conn, newId, normalizedTaskTypes);
+            replaceTaskPageStages(conn, newId, pageStages);
+            conn.commit();
 
             refreshChapterProgress(chapterId);
             if (notifyAssignment) {
@@ -438,12 +505,12 @@ public class PageTaskRepository {
      * Task APPROVED không được chỉnh sửa (BR-TSK-06).
      * Nếu đổi assistant sẽ gửi thông báo TASK_REASSIGNED thay vì TASK_UPDATED.
      */
-    public void updateTaskByMangaka(long taskId, long mangakaId, long assistantId, int start, int end, String taskType, Date dueDate) {
+    public void updateTaskByMangaka(long taskId, long mangakaId, long assistantId, int start, int end, List<String> taskTypes, Date dueDate) {
         String taskInfoSql = "SELECT t.chapterId, t.assistantId, t.status FROM PageTask t WHERE t.id = ?";
-        String updateSql = "UPDATE PageTask SET assistantId = ?, pageRangeStart = ?, pageRangeEnd = ?, taskType = ?, dueDate = ?, status = 'IN_PROGRESS', rejectionCount = 0, updatedAt = GETDATE(), assignedAt = GETDATE() WHERE id = ?";
+        String updateSql = "UPDATE PageTask SET assistantId = ?, pageRangeStart = ?, pageRangeEnd = ?, dueDate = ?, status = 'IN_PROGRESS', rejectionCount = 0, updatedAt = GETDATE(), assignedAt = GETDATE() WHERE id = ?";
 
         try (Connection conn = dataSource.getConnection()) {
-            taskType = normalizeTaskType(taskType);
+            conn.setAutoCommit(false);
             long chapterId;
             long currentAssistantId;
             String currentStatus;
@@ -458,6 +525,8 @@ public class PageTaskRepository {
                     currentStatus = rs.getString("status");
                 }
             }
+            Map<Integer, String> pageStages = derivePageStagesForRange(conn, chapterId, start, end);
+            List<String> normalizedTaskTypes = summarizePageStages(pageStages);
 
             long ownerId = findChapterOwnerMangaka(chapterId);
             if (ownerId != mangakaId) {
@@ -475,7 +544,7 @@ public class PageTaskRepository {
                     assistantId,
                     start,
                     end,
-                    taskType,
+                    normalizedTaskTypes,
                     dueDate,
                     "SELECT COUNT(1) FROM PageTask WHERE chapterId = ? AND id <> ? AND UPPER(status) NOT IN (" + SQL_CLOSED_TASK_STATUSES + ") AND NOT (pageRangeEnd < ? OR pageRangeStart > ?)",
                     "SELECT c.submissionDeadline, c.seriesId, s.mangakaId FROM Chapter c JOIN Series s ON s.id = c.seriesId WHERE c.id = ?",
@@ -485,13 +554,15 @@ public class PageTaskRepository {
                 ps.setLong(1, assistantId);
                 ps.setInt(2, start);
                 ps.setInt(3, end);
-                ps.setString(4, taskType);
-                ps.setDate(5, dueDate);
-                ps.setLong(6, taskId);
+                ps.setDate(4, dueDate);
+                ps.setLong(5, taskId);
                 if (ps.executeUpdate() == 0) {
                     throw new IllegalArgumentException("Task not found");
                 }
             }
+            replaceTaskStages(conn, taskId, normalizedTaskTypes);
+            replaceTaskPageStages(conn, taskId, pageStages);
+            conn.commit();
 
             refreshChapterProgress(chapterId);
             boolean reassigned = currentAssistantId != assistantId;
@@ -566,7 +637,7 @@ public class PageTaskRepository {
                 newAssistantId,
                 task.getPageRangeStart(),
                 task.getPageRangeEnd(),
-                task.getTaskType(),
+                task.getTaskTypes(),
                 dueDateForNewTask,
                 task.getPriority(),
                 task.getNotes(),
@@ -648,20 +719,181 @@ public class PageTaskRepository {
      * Validate và chuẩn hóa taskType.
      * Các loại hợp lệ: SKETCHING, INKING, COLORING, SCREENTONE, LETTERING, MIXED.
      */
-    private String normalizeTaskType(String taskType) {
-        if (taskType == null || taskType.trim().isEmpty()) {
-            throw new IllegalArgumentException("taskType is required");
+    private List<String> normalizeTaskTypes(List<String> taskTypes) {
+        if (taskTypes == null || taskTypes.isEmpty()) {
+            throw new IllegalArgumentException("taskTypes is required");
         }
-        String normalized = taskType.trim().toUpperCase(Locale.ENGLISH);
-        if (!"SKETCHING".equals(normalized)
-                && !"INKING".equals(normalized)
-                && !"COLORING".equals(normalized)
-                && !"LETTERING".equals(normalized)
-                && !"SCREENTONE".equals(normalized)
-                && !"MIXED".equals(normalized)) {
-            throw new IllegalArgumentException("taskType must be SKETCHING, INKING, COLORING, SCREENTONE, LETTERING, or MIXED");
+        List<String> normalizedTypes = new ArrayList<String>();
+        for (String taskType : taskTypes) {
+            if (taskType == null || taskType.trim().isEmpty()) {
+                continue;
+            }
+            String normalized = taskType.trim().toUpperCase(Locale.ENGLISH);
+            if (!"SKETCHING".equals(normalized)
+                    && !"INKING".equals(normalized)
+                    && !"COLORING".equals(normalized)
+                    && !"LETTERING".equals(normalized)
+                    && !"SCREENTONE".equals(normalized)
+                    && !"MIXED".equals(normalized)) {
+                throw new IllegalArgumentException("Invalid task stage: " + taskType);
+            }
+            if (!normalizedTypes.contains(normalized)) {
+                normalizedTypes.add(normalized);
+            }
         }
-        return normalized;
+        if (normalizedTypes.isEmpty()) {
+            throw new IllegalArgumentException("taskTypes is required");
+        }
+        if (normalizedTypes.size() > 1 && normalizedTypes.contains("MIXED")) {
+            throw new IllegalArgumentException("MIXED cannot be combined with specific task stages");
+        }
+        return normalizedTypes;
+    }
+
+    private void replaceTaskStages(Connection conn, long taskId, List<String> taskTypes) throws SQLException {
+        try (PreparedStatement delete = conn.prepareStatement("DELETE FROM PageTaskStage WHERE taskId = ?")) {
+            delete.setLong(1, taskId);
+            delete.executeUpdate();
+        }
+        try (PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO PageTaskStage (taskId, taskTypeCode) VALUES (?, ?)")) {
+            for (String taskType : taskTypes) {
+                insert.setLong(1, taskId);
+                insert.setString(2, taskType);
+                insert.addBatch();
+            }
+            insert.executeBatch();
+        }
+    }
+
+    private void replaceTaskPageStages(Connection conn, long taskId,
+            Map<Integer, String> pageStages) throws SQLException {
+        try (PreparedStatement delete = conn.prepareStatement(
+                "DELETE FROM PageTaskPageStage WHERE taskId = ?")) {
+            delete.setLong(1, taskId);
+            delete.executeUpdate();
+        }
+        try (PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO PageTaskPageStage (taskId, pageNumber, taskTypeCode) VALUES (?, ?, ?)")) {
+            for (Map.Entry<Integer, String> entry : pageStages.entrySet()) {
+                insert.setLong(1, taskId);
+                insert.setInt(2, entry.getKey().intValue());
+                insert.setString(3, entry.getValue());
+                insert.addBatch();
+            }
+            insert.executeBatch();
+        }
+    }
+
+    private List<String> splitTaskTypes(String value) {
+        List<String> taskTypes = new ArrayList<String>();
+        if (value == null || value.trim().isEmpty()) {
+            return taskTypes;
+        }
+        for (String taskType : value.split(",")) {
+            if (!taskType.trim().isEmpty()) {
+                taskTypes.add(taskType.trim());
+            }
+        }
+        return taskTypes;
+    }
+
+    private Map<Integer, String> derivePageStagesForRange(
+            Connection conn, long chapterId, int start, int end) throws SQLException {
+        String sql = "SELECT pageNumber, completedStage FROM " + PageRepository.TABLE_PAGE
+                + " WHERE chapterId = ? AND pageNumber BETWEEN ? AND ? ORDER BY pageNumber";
+        Map<Integer, String> pageStages = new java.util.LinkedHashMap<Integer, String>();
+        int pageCount = 0;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, chapterId);
+            ps.setInt(2, start);
+            ps.setInt(3, end);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    pageCount++;
+                    String nextStage = nextStageAfter(rs.getString("completedStage"));
+                    pageStages.put(Integer.valueOf(rs.getInt("pageNumber")), nextStage);
+                }
+            }
+        }
+        int expectedCount = end - start + 1;
+        if (pageCount != expectedCount) {
+            throw new IllegalArgumentException("Every page in the selected range must exist before assigning a task");
+        }
+        return pageStages;
+    }
+
+    private List<String> summarizePageStages(Map<Integer, String> pageStages) {
+        String requiredStage = null;
+        boolean mixedStages = false;
+        for (String stage : pageStages.values()) {
+            if (requiredStage == null) {
+                requiredStage = stage;
+            } else if (!requiredStage.equals(stage)) {
+                mixedStages = true;
+            }
+        }
+        List<String> stages = new ArrayList<String>();
+        stages.add(mixedStages ? "MIXED" : requiredStage);
+        return stages;
+    }
+
+    private String nextStageAfter(String completedStage) {
+        String current = completedStage == null ? "" : completedStage.trim().toUpperCase(Locale.ENGLISH);
+        if (current.isEmpty()) {
+            return "SKETCHING";
+        }
+        if ("SKETCHING".equals(current)) {
+            return "INKING";
+        }
+        if ("INKING".equals(current)) {
+            return "COLORING";
+        }
+        if ("COLORING".equals(current)) {
+            return "SCREENTONE";
+        }
+        if ("SCREENTONE".equals(current)) {
+            return "LETTERING";
+        }
+        if ("LETTERING".equals(current)) {
+            throw new IllegalArgumentException("Completed pages cannot be assigned another task");
+        }
+        throw new IllegalArgumentException("Unknown completed stage: " + completedStage);
+    }
+
+    private Map<Integer, String> findTaskPageStages(Connection conn, long taskId) throws SQLException {
+        String sql = "SELECT chapterId, pageRangeStart, pageRangeEnd FROM PageTask WHERE id = ?";
+        long chapterId;
+        int start;
+        int end;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, taskId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalArgumentException("Task not found");
+                }
+                chapterId = rs.getLong("chapterId");
+                start = rs.getInt("pageRangeStart");
+                end = rs.getInt("pageRangeEnd");
+            }
+        }
+        Map<Integer, String> stages = new java.util.LinkedHashMap<Integer, String>();
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT pageNumber, taskTypeCode FROM PageTaskPageStage "
+                + "WHERE taskId = ? ORDER BY pageNumber")) {
+            ps.setLong(1, taskId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    stages.put(Integer.valueOf(rs.getInt("pageNumber")),
+                            rs.getString("taskTypeCode"));
+                }
+            }
+        }
+        if (stages.size() != end - start + 1) {
+            stages = derivePageStagesForRange(conn, chapterId, start, end);
+            replaceTaskPageStages(conn, taskId, stages);
+        }
+        return stages;
     }
 
     /**
@@ -682,7 +914,7 @@ public class PageTaskRepository {
             long assistantId,
             int start,
             int end,
-            String taskType,
+            List<String> taskTypes,
             Date dueDate,
             String overlapSql,
             String chapterSql,
@@ -691,8 +923,8 @@ public class PageTaskRepository {
         if (assistantId <= 0) {
             throw new IllegalArgumentException("assistantId is required");
         }
-        if (taskType == null || taskType.trim().isEmpty()) {
-            throw new IllegalArgumentException("taskType is required");
+        if (taskTypes == null || taskTypes.isEmpty()) {
+            throw new IllegalArgumentException("taskTypes is required");
         }
         if (dueDate == null) {
             throw new IllegalArgumentException("dueDate is required");
@@ -796,7 +1028,7 @@ public class PageTaskRepository {
             throw new IllegalArgumentException("Assistant can only submit task for review");
         }
 
-        String readSql = "SELECT chapterId, assistantId, pageRangeStart, pageRangeEnd, status, taskType FROM PageTask WHERE id = ?";
+        String readSql = "SELECT chapterId, assistantId, pageRangeStart, pageRangeEnd, status FROM PageTask WHERE id = ?";
         String updateSql = "UPDATE PageTask SET status = ?, updatedAt = GETDATE(), lastProgressAt = GETDATE() WHERE id = ?";
 
         try (Connection conn = dataSource.getConnection();
@@ -882,7 +1114,7 @@ public class PageTaskRepository {
      * Sau khi duyệt: ảnh task được promote lên Chapter, cập nhật tiến độ, gửi thông báo.
      */
     public void approveByMangaka(long taskId, long mangakaId, String comment) {
-        String readSql = "SELECT chapterId, assistantId, status, taskType FROM PageTask WHERE id = ?";
+        String readSql = "SELECT chapterId, assistantId, status FROM PageTask WHERE id = ?";
         String updateExtendedSql = "UPDATE PageTask SET status = 'APPROVED', approvalComment = ?, updatedAt = GETDATE() WHERE id = ?";
         String updateLegacySql = "UPDATE PageTask SET status = 'APPROVED', updatedAt = GETDATE() WHERE id = ?";
 
@@ -892,7 +1124,6 @@ public class PageTaskRepository {
             long chapterId;
             long assistantId;
             String currentStatus;
-            String taskType;
             try (ResultSet rs = read.executeQuery()) {
                 if (!rs.next()) {
                     throw new IllegalArgumentException("Task not found");
@@ -900,7 +1131,6 @@ public class PageTaskRepository {
                 chapterId = rs.getLong("chapterId");
                 assistantId = rs.getLong("assistantId");
                 currentStatus = rs.getString("status");
-                taskType = rs.getString("taskType");
             }
 
             long ownerId = findChapterOwnerMangaka(chapterId);
@@ -911,6 +1141,8 @@ public class PageTaskRepository {
             if (!"SUBMITTED".equals(normalizeStatus(currentStatus))) {
                 throw new IllegalArgumentException("Only SUBMITTED task can be approved (BR-39)");
             }
+
+            Map<Integer, String> pageStages = findTaskPageStages(conn, taskId);
 
             boolean extended = isTaskSchemaExtended();
             if (extended) {
@@ -926,8 +1158,8 @@ public class PageTaskRepository {
                 }
             }
 
-            // Promote ảnh task lên Chapter
-            promoteTaskImagesToChapter(taskId, chapterId, mangakaId, taskType);
+            replaceTaskStages(conn, taskId, summarizePageStages(pageStages));
+            promoteTaskImagesToChapter(taskId, chapterId, mangakaId, pageStages);
             refreshChapterProgress(chapterId);
 
             String approveMsg = "Task #" + taskId + " has been approved.";
@@ -941,7 +1173,8 @@ public class PageTaskRepository {
     }
 
     /** Promote ảnh PAGE của task vào Chapter (cập nhật bảng Page với completedStage tương ứng) */
-    private void promoteTaskImagesToChapter(long taskId, long chapterId, long approvedBy, String completedStage) {
+    private void promoteTaskImagesToChapter(long taskId, long chapterId, long approvedBy,
+            Map<Integer, String> pageStages) {
         List<ChapterImageItem> images = chapterImageRepository.listByTask(taskId);
         for (ChapterImageItem image : images) {
             if (image.getPageNumber() == null || !"PAGE".equalsIgnoreCase(image.getImageType())) {
@@ -952,7 +1185,7 @@ public class PageTaskRepository {
                     image.getPageNumber().intValue(),
                     image.getFileUrl(),
                     approvedBy,
-                    completedStage);
+                    pageStages.get(image.getPageNumber()));
         }
     }
 
@@ -1596,7 +1829,7 @@ public class PageTaskRepository {
         t.setAssistantId(rs.getLong("assistantId"));
         t.setPageRangeStart(rs.getInt("pageRangeStart"));
         t.setPageRangeEnd(rs.getInt("pageRangeEnd"));
-        t.setTaskType(rs.getString("taskType"));
+        t.setTaskTypes(splitTaskTypes(rs.getString("taskTypes")));
         t.setDueDate(rs.getDate("dueDate"));
         t.setStatus(rs.getString("status"));
         t.setRejectionCount(rs.getInt("rejectionCount"));

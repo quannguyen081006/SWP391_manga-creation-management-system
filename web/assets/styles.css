@@ -1018,6 +1018,24 @@ input, textarea, select {
     content: "\2713";
 }
 
+.setting-control-icon-bonus {
+    color: #176b3a;
+    background: #dcfce7;
+}
+
+.setting-control-icon-bonus::before {
+    content: "\2191";
+}
+
+.setting-control-icon-penalty {
+    color: #b91c1c;
+    background: #fee2e2;
+}
+
+.setting-control-icon-penalty::before {
+    content: "\2212";
+}
+
 .setting-control-copy {
     display: grid;
     gap: 5px;
@@ -2940,9 +2958,11 @@ select,
 .nav-manuscripts .nav-icon::before { content: "\2630"; }
 .nav-decisions .nav-icon::before { content: "\2696"; }
 .nav-ranking .nav-icon::before { content: "\2605"; }
+.nav-salary .nav-icon::before { content: "\0024"; }
 .nav-analytics .nav-icon::before { content: "\25A5"; }
 .nav-users .nav-icon::before { content: "\1F464"; }
 .nav-users .nav-icon { color: #38bdf8; }
+.nav-settings .nav-icon::before { content: "\2699"; }
 
 .top-user {
     flex-shrink: 0;

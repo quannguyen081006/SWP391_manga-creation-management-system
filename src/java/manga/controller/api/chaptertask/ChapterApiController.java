@@ -69,7 +69,7 @@ public class ChapterApiController {
     public ApiResponse<ChapterSummary> create(
             @PathVariable("seriesId") long seriesId,
             HttpSession session,
-            @RequestParam("title") String title,
+            @RequestParam("title") String title,    
             @RequestParam("submissionDeadline") String submissionDeadline,
             @RequestParam(value = "totalPages", defaultValue = "0") int totalPages) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);

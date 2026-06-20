@@ -1,5 +1,6 @@
 package manga.repository;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,6 +15,9 @@ public class SystemSettingRepository {
 
     public static final String MAX_SUBMIT_ATTEMPTS = "proposal.maxSubmitAttempts";
     public static final String MINIMUM_VOTE_QUORUM = "proposal.minimumVoteQuorum";
+    public static final String SALARY_KPI_BONUS_THRESHOLD = "salary.kpiBonusThreshold";
+    public static final String SALARY_BONUS_PERCENT = "salary.bonusPercent";
+    public static final String SALARY_PENALTY_PER_LATE_TASK = "salary.penaltyPerLateTask";
 
     @Autowired
     private DataSource dataSource;
@@ -48,7 +52,47 @@ public class SystemSettingRepository {
             conn.setAutoCommit(false);
             try {
                 ensureSettingsTable(conn);
-                upsertInt(conn, key, value);
+                upsertValue(conn, key, String.valueOf(value));
+                conn.commit();
+            } catch (Exception ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot save system setting", ex);
+        }
+    }
+
+    public BigDecimal getDecimal(String key, BigDecimal defaultValue) {
+        try (Connection conn = dataSource.getConnection()) {
+            ensureSettingsTable(conn);
+            String sql = "SELECT settingValue FROM SystemSetting WHERE settingKey = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, key);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return defaultValue;
+                    }
+                    try {
+                        return new BigDecimal(rs.getString(1));
+                    } catch (NumberFormatException ex) {
+                        return defaultValue;
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            return defaultValue;
+        }
+    }
+
+    public void setDecimal(String key, BigDecimal value) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                ensureSettingsTable(conn);
+                upsertValue(conn, key, value.toPlainString());
                 conn.commit();
             } catch (Exception ex) {
                 conn.rollback();
@@ -67,8 +111,8 @@ public class SystemSettingRepository {
             try {
                 ensureSettingsTable(conn);
                 ensureSubmitAttemptConstraint(conn, maxSubmitAttempts);
-                upsertInt(conn, MAX_SUBMIT_ATTEMPTS, maxSubmitAttempts);
-                upsertInt(conn, MINIMUM_VOTE_QUORUM, minimumVoteQuorum);
+                upsertValue(conn, MAX_SUBMIT_ATTEMPTS, String.valueOf(maxSubmitAttempts));
+                upsertValue(conn, MINIMUM_VOTE_QUORUM, String.valueOf(minimumVoteQuorum));
                 conn.commit();
             } catch (Exception ex) {
                 conn.rollback();
@@ -81,10 +125,31 @@ public class SystemSettingRepository {
         }
     }
 
-    private void upsertInt(Connection conn, String key, int value) throws SQLException {
+    public void setSalarySettings(int kpiBonusThreshold, BigDecimal bonusPercent,
+            BigDecimal penaltyPerLateTask) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                ensureSettingsTable(conn);
+                upsertValue(conn, SALARY_KPI_BONUS_THRESHOLD, String.valueOf(kpiBonusThreshold));
+                upsertValue(conn, SALARY_BONUS_PERCENT, bonusPercent.toPlainString());
+                upsertValue(conn, SALARY_PENALTY_PER_LATE_TASK, penaltyPerLateTask.toPlainString());
+                conn.commit();
+            } catch (Exception ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Cannot save salary settings", ex);
+        }
+    }
+
+    private void upsertValue(Connection conn, String key, String value) throws SQLException {
         String updateSql = "UPDATE SystemSetting SET settingValue = ?, updatedAt = GETDATE() WHERE settingKey = ?";
         try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-            ps.setString(1, String.valueOf(value));
+            ps.setString(1, value);
             ps.setString(2, key);
             if (ps.executeUpdate() > 0) {
                 return;
@@ -93,7 +158,7 @@ public class SystemSettingRepository {
         String insertSql = "INSERT INTO SystemSetting (settingKey, settingValue, updatedAt) VALUES (?, ?, GETDATE())";
         try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
             ps.setString(1, key);
-            ps.setString(2, String.valueOf(value));
+            ps.setString(2, value);
             ps.executeUpdate();
         }
     }

@@ -56,6 +56,7 @@
 
             <div class="settings-actions">
                 <a class="btn" href="${pageContext.request.contextPath}/main/proposals">Back to Proposals</a>
+                <a class="btn" href="${pageContext.request.contextPath}/main/settings">← Back to Settings</a>
                 <button class="btn primary" type="submit">Save Settings</button>
             </div>
         </form>

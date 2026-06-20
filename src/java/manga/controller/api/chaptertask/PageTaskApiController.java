@@ -7,6 +7,8 @@ import manga.model.AuthenticatedUser;
 import manga.model.chaptertask.TaskSummary;
 import manga.service.chaptertask.PageTaskService;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 import javax.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,13 +84,15 @@ public class PageTaskApiController {
             @RequestParam("assistantId") long assistantId,
             @RequestParam("pageRangeStart") int pageRangeStart,
             @RequestParam("pageRangeEnd") int pageRangeEnd,
-            @RequestParam(value = "taskType", required = false) String taskType,
+            @RequestParam(value = "taskTypes", required = false) String[] taskTypes,
+            @RequestParam(value = "taskType", required = false) String legacyTaskType,
             @RequestParam("dueDate") String dueDate,
             @RequestParam(value = "priority", defaultValue = "NORMAL") String priority,
             @RequestParam(value = "notes", required = false) String notes) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         return ApiResponse.ok(
-                pageTaskService.create(chapterId, user, assistantId, pageRangeStart, pageRangeEnd, taskType, dueDate, priority, notes),
+                pageTaskService.create(chapterId, user, assistantId, pageRangeStart, pageRangeEnd,
+                        parseTaskTypes(taskTypes, legacyTaskType), dueDate, priority, notes),
                 "Task created");
     }
 
@@ -135,12 +139,29 @@ public class PageTaskApiController {
             @RequestParam("assistantId") long assistantId,
             @RequestParam("pageRangeStart") int pageRangeStart,
             @RequestParam("pageRangeEnd") int pageRangeEnd,
-            @RequestParam("taskType") String taskType,
+            @RequestParam(value = "taskTypes", required = false) String[] taskTypes,
+            @RequestParam(value = "taskType", required = false) String legacyTaskType,
             @RequestParam("dueDate") String dueDate) {
         AuthenticatedUser user = SessionUserUtil.requireUser(session);
         return ApiResponse.ok(
-                pageTaskService.update(id, user, assistantId, pageRangeStart, pageRangeEnd, taskType, dueDate),
+                pageTaskService.update(id, user, assistantId, pageRangeStart, pageRangeEnd,
+                        parseTaskTypes(taskTypes, legacyTaskType), dueDate),
                 "Task updated");
+    }
+
+    private List<String> parseTaskTypes(String[] taskTypes, String legacyTaskType) {
+        List<String> values = new ArrayList<String>();
+        if (taskTypes != null) {
+            for (String value : taskTypes) {
+                if (value != null) {
+                    values.addAll(Arrays.asList(value.split(",")));
+                }
+            }
+        }
+        if (values.isEmpty() && legacyTaskType != null) {
+            values.addAll(Arrays.asList(legacyTaskType.split(",")));
+        }
+        return values;
     }
 
     // ============================================================
